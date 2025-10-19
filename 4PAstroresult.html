@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>四柱推命：結果</title>
+<style>
+  :root{--bd:#e5e5e5;--muted:#666}
+  body{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;margin:24px;line-height:1.7}
+  .card{max-width:1100px;margin:auto;padding:20px;border:1px solid var(--bd);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.05);background:#fff}
+  h1{font-size:1.3rem;margin:0 0 10px}
+  h2{font-size:1.1rem;margin:18px 0 8px}
+  .muted{color:var(--muted)}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .cell{padding:10px;border:1px solid var(--bd);border-radius:10px;text-align:center;background:#fff;min-height:72px}
+  table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff}
+  th,td{border:1px solid var(--bd);padding:.45rem;text-align:center;vertical-align:middle}
+  th{background:#f6f6f6}
+  #diag{margin-top:6px;color:#666;font-size:.9rem}
+
+  .logic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+  .box{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:10px}
+  .box h3{margin:.1rem 0 .4rem;font-size:1rem}
+  .box ul{margin:.4rem 0 .2rem 1.2rem}
+  .box li{margin:.15rem 0}
+
+  @media (max-width: 900px){ .logic-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width: 600px){ .logic-grid{grid-template-columns:1fr} }
+
+  /* クラシック命式表（印刷想定） */
+  table.classic{width:100%;border-collapse:collapse;background:#fff;margin-top:8px}
+  table.classic th,table.classic td{border:1px solid var(--bd);padding:.55rem;text-align:center}
+  table.classic thead th{background:#f6f6f6}
+  table.classic .aux{background:#fbfeff;min-width:90px}
+  table.classic .kw{background:#f1fbff;font-weight:600;vertical-align:middle}
+  table.classic .gz{font-size:1.05rem;font-weight:600}
+  table.classic .gogyou{color:#555}
+  table.classic .subtg{font-size:.95rem;color:#444}
+
+.meishiki{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+  background:#fff;
+  font-variant-numeric: tabular-nums;
+}
+.meishiki th,.meishiki td{
+  border:1px solid var(--bd,#e5e5e5);
+  padding:.45rem;
+  text-align:center;
+  white-space:nowrap;
+}
+.meishiki thead th{background:#f6f6f6}
+.meishiki tbody th{background:#fafafa; text-align:right; padding-right:.6rem;}
+
+/* 蔵干の区分バッジ（陰陽色分け） */
+.badge-zy {
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:6px;
+  border:1px solid #ddd;
+  margin-right:6px;
+  font-size:.92em;
+  line-height:1.6;
+}
+.badge-zy.yin  { background:#f3f4ff; }   /* 陰：淡い青紫 */
+.badge-zy.yang { background:#fff3e0; }   /* 陽：淡い橙 */
+.badge-zy.neutral { background:#f6f6f6; color:#777; } /* －（なし） */
+
+/* 1セル内を3分割のグリッドで表示 */
+.triplet{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:0;                 /* ぴっちり */
+  align-items:center;
+}
+
+/* 仕切り線で“セルっぽく”見せる */
+.triplet > span{
+  padding:.25rem .35rem;
+  border-left:1px solid var(--bd, #e5e5e5);
+}
+.triplet > span:first-child{
+  border-left:none;
+}
+
+/* 1セル内を3分割のグリッド */
+.triplet{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:0;
+  align-items:center;
+}
+
+/* 仕切り線で“セルっぽく”見せる */
+.triplet > .tcell{
+  padding:.35rem .45rem;
+  border-left:1px solid var(--bd, #e5e5e5);
+}
+.triplet > .tcell:first-child{ border-left:none; }
+
+/* ← ここがラベル。data-label を見出しとして上に出す */
+.triplet > .tcell::before{
+  content:attr(data-label);
+  display:block;
+  font-size:.75em;
+  line-height:1.1;
+  color:var(--muted, #666);
+  margin-bottom:.15rem;
+  font-weight:600;   /* お好みで */
+  letter-spacing:.02em;
+}
+
+/* バッジの前に “本/中/余：” を出す */
+.badge-zy[data-label]::before{
+  content: attr(data-label) "：";
+  color: var(--muted, #666);
+  margin-right:.2rem;
+  font-size:.9em;
+}
+
+/* 蔵干（文字）用の見た目（区分バッジとほぼ同じ） */
+.zang-chip{
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:6px;
+  border:1px solid #ddd;
+  margin-right:6px;
+  font-size:.92em;
+  line-height:1.6;
+  background:#f6f6f6; /* neutral の初期色でもOK */
+}
+
+/* 既存の状態クラスを共用（badge-zy と同じでOK） */
+.zang-chip{display:inline-block;padding:2px 6px;border:1px solid #ddd;border-radius:6px;margin-right:6px;line-height:1.6;font-size:.92em;background:#f6f6f6}
+.zang-chip.yin{background:#f3f4ff}      /* 乙丁己辛癸など */
+.zang-chip.yang{background:#fff3e0}     /* 甲丙戊庚壬など */
+.zang-chip.neutral{background:#f6f6f6;color:#777} /* － */
+
+/* 追加（任意）：五行カラー */
+.badge-zy.el-木{ background:#e6f4ea; }
+.badge-zy.el-火{ background:#ffe9e3; }
+.badge-zy.el-土{ background:#f7efe4; }
+.badge-zy.el-金{ background:#fffbd1; }
+.badge-zy.el-水{ background:#e8f3fa; }
+
+/* スクロールで崩れない安全策 */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;     /* 横スクロール許可 */
+  -webkit-overflow-scrolling: touch; /* iOSなめらかスクロール */
+}
+
+/* テーブルの基本 */
+.classic-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;          /* 列幅を安定 */
+  min-width: 680px;             /* むやみに潰れない下限値（好みで調整） */
+}
+
+.classic-table th,
+.classic-table td {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  vertical-align: middle;
+  word-break: keep-all;         /* 漢字列の折返えし抑制 */
+}
+
+/* 小さな画面で少しコンパクトに */
+@media (max-width: 768px) {
+  .classic-table {
+    min-width: 560px;           /* さらに小さい最小幅 */
+    font-size: 13px;
+  }
+  .classic-table th,
+  .classic-table td {
+    padding: 4px 6px;
+  }
+}
+
+/* もっと小さい端末 */
+@media (max-width: 480px) {
+  .classic-table {
+    min-width: 520px;
+    font-size: 12px;
+  }
+  /* バッジ類が長いときの省略表示例（必要なら） */
+  .classic-table .badge,
+  .classic-table .badge-zy {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 96px;
+    display: inline-block;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>四柱推命：結果</h1>
+  <div id="summary" class="muted"></div>
+  <div id="diag" class="muted">データ読込中...</div>
+
+
+<h2>命式</h2>
+<div class="table-wrap">
+  <table id="classicTable" class="meishiki classic-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>時柱</th>
+        <th>日柱</th>
+        <th>月柱</th>
+        <th>年柱</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>干支</th>
+        <td id="c_time_gz">—</td>
+        <td id="c_day_gz">—</td>
+        <td id="c_month_gz">—</td>
+        <td id="c_year_gz">—</td>
+      </tr>
+
+      <tr>
+        <th>通変星（干）</th>
+        <td id="c_time_tg">—</td>
+        <td id="c_day_tg">—</td>
+        <td id="c_month_tg">—</td>
+        <td id="c_year_tg">—</td>
+      </tr>
+
+      <tr>
+        <th>地支</th>
+        <td id="c_time_zhi">—</td>
+        <td id="c_day_zhi">—</td>
+        <td id="c_month_zhi">—</td>
+        <td id="c_year_zhi">—</td>
+      </tr>
+
+      <tr>
+        <th>蔵干（区分）</th>
+        <td>
+          <div class="triplet">
+            <span class="badge-zy neutral" id="c_time_zang_hon" data-label="本">－</span>
+            <span class="badge-zy neutral" id="c_time_zang_mid" data-label="中">－</span>
+            <span class="badge-zy neutral" id="c_time_zang_rem" data-label="余">－</span>
+          </div>
+        </td>
+        <td>
+          <div class="triplet">
+            <span class="badge-zy neutral" id="c_day_zang_hon" data-label="本">－</span>
+            <span class="badge-zy neutral" id="c_day_zang_mid" data-label="中">－</span>
+            <span class="badge-zy neutral" id="c_day_zang_rem" data-label="余">－</span>
+          </div>
+        </td>
+        <td>
+          <div class="triplet">
+            <span class="badge-zy neutral" id="c_month_zang_hon" data-label="本">－</span>
+            <span class="badge-zy neutral" id="c_month_zang_mid" data-label="中">－</span>
+            <span class="badge-zy neutral" id="c_month_zang_rem" data-label="余">－</span>
+          </div>
+        </td>
+        <td>
+          <div class="triplet">
+            <span class="badge-zy neutral" id="c_year_zang_hon" data-label="本">－</span>
+            <span class="badge-zy neutral" id="c_year_zang_mid" data-label="中">－</span>
+            <span class="badge-zy neutral" id="c_year_zang_rem" data-label="余">－</span>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th>通変星（蔵干）</th>
+        <td>
+          <div class="triplet">
+            <span class="tcell" id="c_time_zang_tg_hon" data-label="本">—</span>
+            <span class="tcell" id="c_time_zang_tg_mid" data-label="中">—</span>
+            <span class="tcell" id="c_time_zang_tg_rem" data-label="余">—</span>
+          </div>
+        </td>
+        <td>
+          <div class="triplet">
+            <span class="tcell" id="c_day_zang_tg_hon" data-label="本">—</span>
+            <span class="tcell" id="c_day_zang_tg_mid" data-label="中">—</span>
+            <span class="tcell" id="c_day_zang_tg_rem" data-label="余">—</span>
+          </div>
+        </td>
+        <td>
+          <div class="triplet">
+            <span class="tcell" id="c_month_zang_tg_hon" data-label="本">—</span>
+            <span class="tcell" id="c_month_zang_tg_mid" data-label="中">—</span>
+            <span class="tcell" id="c_month_zang_tg_rem" data-label="余">—</span>
+          </div>
+        </td>
+        <td>
+          <div class="triplet">
+            <span class="tcell" id="c_year_zang_tg_hon" data-label="本">—</span>
+            <span class="tcell" id="c_year_zang_tg_mid" data-label="中">—</span>
+            <span class="tcell" id="c_year_zang_tg_rem" data-label="余">—</span>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th>十二運星</th>
+        <td id="c_time_12un">—</td>
+        <td id="c_day_12un">—</td>
+        <td id="c_month_12un">—</td>
+        <td id="c_year_12un">—</td>
+      </tr>
+
+      <tr>
+        <th>十二運（数）</th>
+        <td id="c_time_12un_val">—</td>
+        <td id="c_day_12un_val">—</td>
+        <td id="c_month_12un_val">—</td>
+        <td id="c_year_12un_val">—</td>
+      </tr>
+
+      <tr>
+        <th>九星（簡易）</th>
+        <td id="c_kyusei" colspan="4">—</td>
+      </tr>
+
+      <!-- ご要望の順：生年天中殺 → 天中殺（空亡＝日） -->
+      <tr>
+        <th>生年天中殺（空亡）</th>
+        <td id="kwYear" colspan="4">—</td>
+      </tr>
+      <tr>
+        <th>日中天中殺（空亡）</th>
+        <td id="kwDay" colspan="4">—</td>
+      </tr>
+
+      <tr>
+        <th>身強弱</th>
+        <td id="strength" colspan="4"></td>
+      </tr>
+      <tr>
+        <th>格局</th>
+        <td id="kakkyoku" colspan="4"></td>
+      </tr>
+      <tr>
+        <th>用神・喜神・忌神・仇神</th>
+        <td colspan="4"><div id="yojin"></div></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+  <!-- エネルギー -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+    <div><h2>五行バランス</h2><div id="energy"></div></div>
+  </div>
+
+  <!-- 成敗 -->
+  <h2>成敗ロジック</h2>
+  <div class="logic-grid">
+    <div class="box">
+      <h3>透干（天透）</h3>
+      <div id="toko"></div>
+    </div>
+    <div class="box">
+      <h3>合・冲・刑・害</h3>
+      <div id="relations"></div>
+    </div>
+    <div class="box">
+      <h3>調候</h3>
+      <div id="choko"></div>
+    </div>
+    <div class="box">
+      <h3>天剋地冲</h3>
+      <div id="tkdc"></div>
+    </div>
+    <div class="box">
+      <h3>守護神（調候優先）</h3>
+      <div id="guardian"></div>
+    </div>
+  </div>
+
+  
+
+<!-- ライブラリ（同階層の index.global.js） -->
+<script src="./index.global.js?v=1" charset="utf-8"></script>
+<!-- 本体 -->
+<script defer src="./app.js?v=42" charset="utf-8"></script>
+</body>
+</html>
