@@ -195,7 +195,8 @@
     display: inline-block;
   }
 }
-
+#row_stem td { font-size: .95em; color:#333; }
+  .badge-zy { margin-left: .4em; }
 </style>
 </head>
 <body>
@@ -225,7 +226,13 @@
         <td id="c_month_gz">—</td>
         <td id="c_year_gz">—</td>
       </tr>
-
+     <tr id="row_stem">
+       <th>天干</th>
+      <td id="c_year_g"></td>
+       <td id="c_month_g"></td>
+      <td id="c_day_g"></td>
+      <td id="c_time_g"></td>
+   </tr>
       <tr>
         <th>通変星（干）</th>
         <td id="c_time_tg">—</td>
@@ -387,6 +394,6 @@
 <!-- ライブラリ（同階層の index.global.js） -->
 <script src="./index.global.js?v=1" charset="utf-8"></script>
 <!-- 本体 -->
-<script defer src="./app.js?v=42" charset="utf-8"></script>
+<script defer src="./app.js?v=43" charset="utf-8"></script>
 </body>
 </html>
