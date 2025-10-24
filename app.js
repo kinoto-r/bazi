@@ -641,10 +641,195 @@ function paintTgCell(id){
     setText('h', pillars.time.chinese);
 
     // "地支"の表示（安全な1文字）
-    setText('c_year_zhi', yB);
-    setText('c_month_zhi', mB);
-    setText('c_day_zhi',   dB);
     setText('c_time_zhi',  hB);
+    setText('c_day_zhi',   dB);
+    setText('c_month_zhi', mB);
+    setText('c_year_zhi', yB);
+
+// ===== 地支の行（陰陽・五行バッジ付き）描画 =====
+
+// A: すべて zhi_* を使う / B: zh_* でも拾えるフォールバック
+function getZhiCell(k){ // k: 'h'|'d'|'m'|'y'
+  // Aなら前者でヒット、Bなら後者が効く
+  return document.getElementById('zhi_' + k) || document.getElementById('zh_' + k);
+}
+
+// 1つの地支セル用フラグメントを作る（支字＋陰陽バッジ＋五行バッジ）
+function buildZhiFrag(zhi){
+  const frag = document.createDocumentFragment();
+  const z = String(zhi || '').trim();
+
+  // 本体の支字
+  const main = document.createElement('span');
+  main.textContent = z || '—';
+  main.style.marginRight = '6px';
+  frag.appendChild(main);
+
+  // メタ（陰陽・五行）
+  const meta = BRANCH_META[z] || null;
+  if (meta){
+    // 陰陽
+    frag.appendChild( makeBadge(meta.yy, meta.yy === '陽' ? 'yang' : 'yin') );
+    frag.appendChild(document.createTextNode(' '));
+    // 五行（蔵干区分と同じ色味のクラス el-木/火/土/金/水 を付与）
+    const elBadge = makeBadge(meta.el);
+    elBadge.classList.add('el-' + meta.el);
+    frag.appendChild(elBadge);
+  }
+  return frag;
+}
+
+// 地支行をまとめて描画（表ヘッダの並びに合わせて 時・日・月・年）
+(function paintZhiRow(){
+  const map = { h: hB, d: dB, m: mB, y: yB }; // h=時, d=日, m=月, y=年
+  Object.entries(map).forEach(([k, zhi])=>{
+    const cell = getZhiCell(k);
+    if (!cell) return;
+    cell.innerHTML = '';
+    cell.appendChild( buildZhiFrag(zhi) );
+  });
+  console.log('[DBG] paintZhiRow', { yB, mB, dB, hB });
+})();
+
+// ===== 天干の行（干＋陰陽バッジ＋五行バッジ）描画 =====
+
+// 天干1セル分のフラグメントを作成
+function buildStemFrag(stem) {
+  const frag = document.createDocumentFragment();
+  const s = String(stem || '').trim();
+
+  // 本体（干の漢字）
+  const main = document.createElement('span');
+  main.textContent = s || '—';
+  main.style.marginRight = '6px';
+  frag.appendChild(main);
+
+  // 陰陽バッジ
+  if (s) {
+    const yy = ['甲','丙','戊','庚','壬'].includes(s) ? '陽' : '陰';
+    frag.appendChild( makeBadge(yy, yy === '陽' ? 'yang' : 'yin') );
+    frag.appendChild(document.createTextNode(' '));
+  }
+
+  // 五行バッジ（色付き：el-木/火/土/金/水）
+  const el = stemElement[s];   // 例: '木'
+  if (el) {
+    const elBadge = makeBadge(el);
+    elBadge.classList.add('el-' + el); // これが色付けクラス
+    frag.appendChild(elBadge);
+  }
+
+  return frag;
+}
+
+// テーブルの天干セルに反映
+(function paintStemRow(){
+  // ※あなたのHTMLは <th>が「時・日・月・年」順ですが、
+  //   各セルの id は year/month/day/time になっているので、
+  //   ここは id に合わせて素直に埋めます（並びはHTMLのまま）
+  const map = {
+    c_year_g:  yG,
+    c_month_g: mG,
+    c_day_g:   dG,
+    c_time_g:  hG,
+  };
+
+  Object.entries(map).forEach(([id, stem])=>{
+    const cell = document.getElementById(id);
+    if (!cell) return;
+    cell.innerHTML = '';
+    cell.appendChild( buildStemFrag(stem) );
+  });
+
+  console.log('[DBG] paintStemRow', map);
+})();
+
+// --- 地支セル（支字＋陰陽＋五行バッジ）を組み立てる ---
+function buildZhiFrag(zhi){
+  const frag = document.createDocumentFragment();
+
+  // 支字（メイン）
+  const main = document.createElement('span');
+  main.textContent = zhi || '—';
+  main.style.marginRight = '6px';
+  frag.appendChild(main);
+
+  // 陰陽
+  const yy = yinYangOfBranch(zhi) || '－';
+  const bYY = makeBadge(yy, yy==='陽' ? 'yang' : (yy==='陰' ? 'yin' : 'neutral'));
+  frag.appendChild(bYY);
+
+  // 五行（色付き）
+  const el = elementOfBranch(zhi) || '－';
+  const bEl = makeBadge(el, el==='－' ? 'neutral' : null);
+  if (el && el !== '－') bEl.classList.add('el-' + el);  // ← 色付けの肝
+  frag.appendChild(document.createTextNode(' '));
+  frag.appendChild(bEl);
+
+  return frag;
+}
+
+// --- 地支（陰陽・五行）行を描画（時・日・月・年の順） ---
+(function paintZhiRow(){
+  const map = { h: hB, d: dB, m: mB, y: yB }; // h=時, d=日, m=月, y=年（表ヘッダ順）
+  Object.entries(map).forEach(([k, zhi])=>{
+    const cell = document.getElementById('zhi_' + k);
+    if (!cell) return;
+    cell.innerHTML = '';                  // 中身クリア
+    cell.appendChild(buildZhiFrag(zhi));  // 作ったかたまりを挿入
+  });
+  console.log('[DBG] paintZhiRow', { yB, mB, dB, hB });
+})();
+
+
+
+console.log('[DBG] paintZhiRow', { yB, mB, dB, hB });
+
+
+// 地支セルに「支字 + 陰陽バッジ + 五行バッジ」を描画（蔵干区分と同じ色クラスを付与）
+(function paintZhiRow(){
+  const ZHI_META = {
+    子:{el:'水', yy:'陽'}, 丑:{el:'土', yy:'陰'}, 寅:{el:'木', yy:'陽'}, 卯:{el:'木', yy:'陰'},
+    辰:{el:'土', yy:'陽'}, 巳:{el:'火', yy:'陰'}, 午:{el:'火', yy:'陽'}, 未:{el:'土', yy:'陰'},
+    申:{el:'金', yy:'陽'}, 酉:{el:'金', yy:'陰'}, 戌:{el:'土', yy:'陽'}, 亥:{el:'水', yy:'陰'}
+  };
+
+  const pairs = [
+    ['c_year_zhi',  yB],
+    ['c_month_zhi', mB],
+    ['c_day_zhi',   dB],
+    ['c_time_zhi',  hB],
+  ];
+
+  pairs.forEach(([id, zhi])=>{
+    const cell = document.getElementById(id);
+    if (!cell) return;
+
+    const meta = ZHI_META[zhi];
+    if (!meta){ cell.textContent = zhi || '—'; return; }
+
+    // 中身を作り直す
+    cell.innerHTML = '';
+
+    // 支字（本体）
+    const main = document.createElement('span');
+    main.textContent = zhi;
+    main.style.marginRight = '6px';
+    cell.appendChild(main);
+
+    // 陰陽バッジ（yang / yin）
+    const yyTone = meta.yy === '陽' ? 'yang' : 'yin';
+    cell.appendChild( makeBadge(meta.yy, yyTone) );
+    cell.appendChild(document.createTextNode(' '));
+
+    // 五行バッジ（蔵干区分と同じ色を使いたい → el-木/火/土/金/水 を付与）
+    const elBadge = makeBadge(meta.el);
+    elBadge.classList.add(`el-${meta.el}`);    // ★色付け：蔵干区分と同じクラス名
+    cell.appendChild(elBadge);
+  });
+})();
+
+
 
     // 地支セルへバッジ付与
     paintZhiCell('c_year_zhi',  yB);
@@ -879,10 +1064,13 @@ function paintTgCell(id){
       const Dc = pillars.day.chinese;
       const Hc = pillars.time.chinese;
 
-      setText('c_year_gz',  Yc);
-      setText('c_month_gz', Mc);
-      setText('c_day_gz',   Dc);
       setText('c_time_gz',  Hc);
+      setText('c_day_gz',   Dc);
+      setText('c_month_gz', Mc);
+      setText('c_year_gz',  Yc);
+
+
+
 
      // 新天干セルの存在チェック
 const stemIds = ['c_year_g','c_month_g','c_day_g','c_time_g'];
@@ -890,11 +1078,11 @@ console.log('[CHK] stem cells exist?', Object.fromEntries(
   stemIds.map(id => [id, !!document.getElementById(id)])
 ));
 
-// 天干の一字をセット
-setText('c_year_g',  yG);
-setText('c_month_g', mG);
-setText('c_day_g',   dG);
+// 天干（1文字）を流し込む
 setText('c_time_g',  hG);
+setText('c_day_g',   dG);
+setText('c_month_g', mG);
+setText('c_year_g',  yG);
 
 // （任意）バッジを付ける
 [['c_year_g', yG], ['c_month_g', mG], ['c_day_g', dG], ['c_time_g', hG]].forEach(([id, g])=>{
@@ -908,15 +1096,22 @@ setText('c_time_g',  hG);
   cell.appendChild(document.createTextNode(' '));
   // 五行バッジ
   const el = stemElement[g] || '－';
-  cell.appendChild( makeBadge(el) );
+
+   const elBadge2 = makeBadge(el);
+   if (el && el !== '－') elBadge2.classList.add(`el-${el}`); // 同じ色クラスを付与
+  cell.appendChild(elBadge2);
+
 });
 
 
      // ── ここから追加：天干（新しい行）を出す ──
-setText('c_year_g',  yG);
-setText('c_month_g', mG);
-setText('c_day_g',   dG);
 setText('c_time_g',  hG);
+setText('c_day_g',   dG);
+setText('c_month_g', mG);
+setText('c_year_g',  yG);
+
+
+
 
 // もし天干にも「陰陽/五行」バッジを付けたい場合（任意）
 [['c_year_g', yG], ['c_month_g', mG], ['c_day_g', dG], ['c_time_g', hG]].forEach(([id, g])=>{
@@ -934,21 +1129,20 @@ setText('c_time_g',  hG);
 });
 // ── 追加ここまで ──
 
-
-      setText('c_year_zhi',  yB);
-      setText('c_month_zhi', mB);
-      setText('c_day_zhi',   dB);
       setText('c_time_zhi',  hB);
+      setText('c_day_zhi',   dB);
+      setText('c_month_zhi', mB);
+      setText('c_year_zhi',  yB);
 
-      setText('c_year_gogyou',  signEl(yG));
-      setText('c_month_gogyou', signEl(mG));
+      setText('c_time_gogyou',  signEl(hG));      
       setText('c_day_gogyou',   signEl(dG));
-      setText('c_time_gogyou',  signEl(hG));
+      setText('c_month_gogyou', signEl(mG));
+      setText('c_year_gogyou',  signEl(yG));
 
-      setText('c_year_tg',  tenGodExact(dG, yG) || '－');
-      setText('c_month_tg', tenGodExact(dG, mG) || '－');
-      setText('c_day_tg',   '');
       setText('c_time_tg',  tenGodExact(dG, hG) || '－');
+      setText('c_day_tg',   '');
+      setText('c_month_tg', tenGodExact(dG, mG) || '－');
+      setText('c_year_tg',  tenGodExact(dG, yG) || '－');
 
       const paintZangBadgesOnly = (prefix, b) => {
         const z = (b && ZANG[b]) ? ZANG[b] : {};
