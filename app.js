@@ -884,6 +884,57 @@ function paintTgCell(id){
       setText('c_day_gz',   Dc);
       setText('c_time_gz',  Hc);
 
+     // 新天干セルの存在チェック
+const stemIds = ['c_year_g','c_month_g','c_day_g','c_time_g'];
+console.log('[CHK] stem cells exist?', Object.fromEntries(
+  stemIds.map(id => [id, !!document.getElementById(id)])
+));
+
+// 天干の一字をセット
+setText('c_year_g',  yG);
+setText('c_month_g', mG);
+setText('c_day_g',   dG);
+setText('c_time_g',  hG);
+
+// （任意）バッジを付ける
+[['c_year_g', yG], ['c_month_g', mG], ['c_day_g', dG], ['c_time_g', hG]].forEach(([id, g])=>{
+  const cell = document.getElementById(id);
+  if (!cell) return;
+  // 文字の後ろにスペース
+  cell.appendChild(document.createTextNode(' '));
+  // 陰陽バッジ
+  const yy = yinYangOfStem(g);
+  cell.appendChild( makeBadge(yy, yy==='陽' ? 'yang' : 'yin') );
+  cell.appendChild(document.createTextNode(' '));
+  // 五行バッジ
+  const el = stemElement[g] || '－';
+  cell.appendChild( makeBadge(el) );
+});
+
+
+     // ── ここから追加：天干（新しい行）を出す ──
+setText('c_year_g',  yG);
+setText('c_month_g', mG);
+setText('c_day_g',   dG);
+setText('c_time_g',  hG);
+
+// もし天干にも「陰陽/五行」バッジを付けたい場合（任意）
+[['c_year_g', yG], ['c_month_g', mG], ['c_day_g', dG], ['c_time_g', hG]].forEach(([id, g])=>{
+  const cell = document.getElementById(id);
+  if (!cell) return;
+  // 文字の後ろにスペース
+  cell.appendChild(document.createTextNode(' '));
+  // 陰陽バッジ
+  const yy = yinYangOfStem(g);
+  cell.appendChild( makeBadge(yy, yy==='陽' ? 'yang' : 'yin') );
+  cell.appendChild(document.createTextNode(' '));
+  // 五行バッジ
+  const el = stemElement[g] || '－';
+  cell.appendChild( makeBadge(el) );
+});
+// ── 追加ここまで ──
+
+
       setText('c_year_zhi',  yB);
       setText('c_month_zhi', mB);
       setText('c_day_zhi',   dB);
@@ -966,7 +1017,7 @@ function paintTgCell(id){
     }
 
     // 待機してから描画（await 不使用）
-    waitForId('c_year_gz').then((hasClassic) => {
+    waitForId('c_year_g').then((hasClassic) => {
       console.log('[CHECK] c_year_gz present after wait?', hasClassic);
       if (!hasClassic){
         console.warn('[BLOCK] classic not found: #c_year_gz（DOM未構築）');
