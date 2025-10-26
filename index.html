@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>四柱推命：命式入力</title>
+<style>
+  :root{--bd:#e5e5e5;--muted:#666}
+  body{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;margin:24px;line-height:1.7;background:#fafafa}
+  .card{max-width:760px;margin:auto;padding:20px;border:1px solid var(--bd);border-radius:16px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  h1{font-size:1.35rem;margin:0 0 10px}
+  .muted{color:var(--muted)}
+  label{display:block;font-weight:600;margin-top:14px;margin-bottom:6px}
+  input,select,button{width:100%;padding:.65rem;border:1px solid var(--bd);border-radius:10px;font-size:1rem;background:#fff}
+  button{background:#111;color:#fff;border-color:#111;cursor:pointer;margin-top:20px}
+  button:hover{background:#333}
+  .footer{margin-top:18px;font-size:.9rem;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>四柱推命：命式入力</h1>
+    <p class="muted">※入力はブラウザだけで使用します（送信先は同一サイト内）。</p>
+
+    <form action="./4PAstroresult.html" method="get" accept-charset="UTF-8">
+      <label for="date">生年月日</label>
+      <input id="date" name="date" type="date" required />
+
+      <label for="time">出生時刻</label>
+      <input id="time" name="time" type="time" step="60" value="12:00" required />
+
+      <label for="tz">タイムゾーン</label>
+      <select id="tz" name="tz" required>
+        <option value="Asia/Tokyo" selected>Asia/Tokyo（日本）</option>
+        <option value="Asia/Seoul">Asia/Seoul</option>
+        <option value="Asia/Shanghai">Asia/Shanghai</option>
+        <option value="Asia/Taipei">Asia/Taipei</option>
+        <option value="Asia/Hong_Kong">Asia/Hong_Kong</option>
+        <option value="Asia/Singapore">Asia/Singapore</option>
+        <option value="Australia/Sydney">Australia/Sydney</option>
+        <option value="Europe/London">Europe/London</option>
+        <option value="Europe/Paris">Europe/Paris</option>
+        <option value="America/Los_Angeles">America/Los_Angeles</option>
+        <option value="America/New_York">America/New_York</option>
+      </select>
+
+      <button type="submit">命式を作成する</button>
+    </form>
+
+    <p class="footer">
+      出力は別ページ（4PAstroresult.html）で表示します。配点・深浅倍率・透干ボーナスは結果ページ側の既定値で計算されます。
+    </p>
+  </div>
+</body>
+</html>
