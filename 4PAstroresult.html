@@ -138,6 +138,7 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
 .badge-zy.el-土 { background:#ffeebc !important; border-color:#e8ce77 !important; }
 .badge-zy.el-金 { background:#dbe8ff !important; border-color:#b9d0ff !important; }
 .badge-zy.el-水 { background:#d9f2ff !important; border-color:#aee6ff !important; }
+
 </style>
 
 </head>
@@ -336,11 +337,37 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
     </div>
   </div>
 
-  
-
 <!-- ライブラリ（同階層の index.global.js） -->
 <script src="./index.global.js?v=1" charset="utf-8"></script>
 <!-- 本体 -->
-<script defer src="./app.js?v=51" charset="utf-8"></script>
+<script defer src="./app.js?v=52" charset="utf-8"></script>
+
+<!-- ▼▼▼ 大運表（表示専用。app.js が描画） ▼▼▼ -->
+<style>
+  /* 見本に寄せた軽いスタイル */
+  #daiunSection table{width:100%;border-collapse:collapse;font-size:14px}
+  #daiunSection th,#daiunSection td{border:1px solid #999;padding:8px 10px;text-align:left;vertical-align:top}
+  #daiunSection thead th{background:#f8f7e7;color:#333;position:sticky;top:0}
+  #daiunSection tbody tr:nth-child(odd) td{background:#eef7ff55}
+  #daiunSection .muted{color:#6b7280;font-size:12px}
+  #daiunSection .tag{display:inline-block;padding:2px 8px;border:1px solid #bbb;border-radius:999px;margin-right:6px;font-size:12px}
+  #daiunSection .ok{border-color:#2f6} .warn{border-color:#fd6} .bad{border-color:#f66}
+</style>
+
+<section id="daiunSection" style="margin-top:30px;display:none">
+  <h2 style="font-size:18px;margin:0 0 10px">大運</h2>
+  <table id="daiunTable">
+    <thead>
+      <tr>
+        <th>年齢</th>
+        <th>干支</th>
+        <th>通変星</th>
+        <th>十二運星</th>
+        <th>関係</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
 </body>
 </html>
