@@ -511,10 +511,9 @@ function paintTgCell(id){
 
 /* ===================== 4) 実行部 IIFE Start===================== */
 (async function main(){
-
-  console.log('[BOOT] app.js start');
-
   try {
+    console.log('[BOOT] app.js start');
+
     const Lib = window.BaziCalculator;
     if (!Lib) { setText('summary','BaZiライブラリ未読み込み（index.global.js）'); return; }
 
@@ -789,7 +788,7 @@ function paintTgCell(id){
     }
 
     // 格局 + 用神
-    const kk = judgeKakkyoku(dG, mB, st.label, pillars);
+    const kk = judgeKakkyoku(dG, mB, st.label);
     const kkW = $('kakkyoku');
     if (kkW){
       kkW.innerHTML='';
@@ -942,108 +941,98 @@ function paintTgCell(id){
       paintZangTG('c_day',   dB);
       paintZangTG('c_time',  hB);
 
-      // === 代表の通変星（蔵干）を1つ選んで表示 ===
-      const stemsByPos = { yearG: yG, monthG: mG, dayG: dG, timeG: hG };
-      
-      // 年・月・日・時の順に代表を決める
-      const pickYear  = selectZangTenGod(dG, yB, stemsByPos);
-      const pickMonth = selectZangTenGod(dG, mB, stemsByPos);
-      const pickDay   = selectZangTenGod(dG, dB, stemsByPos);
-      const pickTime  = selectZangTenGod(dG, hB, stemsByPos);
-      
-      console.log('[代表蔵干] 年:', pickYear, '月:', pickMonth, '日:', pickDay, '時:', pickTime);
-      
-      // セルに反映（列は 時・日・月・年）
-      setText('c_time_zang_tg_main',  pickTime.tg  || '－');
-      setText('c_day_zang_tg_main',   pickDay.tg   || '－');
-      setText('c_month_zang_tg_main', pickMonth.tg || '－');
-      setText('c_year_zang_tg_main',  pickYear.tg  || '－');
-      
-      // （任意）基準を title に入れてツールチップ表示
-      const setTip = (id, info) => {
-        const el = document.getElementById(id);
-        if (el && info && info.basis) el.title = info.basis;
-      };
-      setTip('c_time_zang_tg_main',  pickTime);
-      setTip('c_day_zang_tg_main',   pickDay);
-      setTip('c_month_zang_tg_main', pickMonth);
-      setTip('c_year_zang_tg_main',  pickYear);
-      
-      // バッジで描画（五行色付き）
-      function fillBadge(id, picked){
-        const cell = document.getElementById(id);
-        if (!cell) return;
-        cell.innerHTML = '';
-        
-        const tgStr = picked.tg;
-        if (!tgStr || tgStr==='－'){ 
-          cell.textContent = '－'; 
-          return; 
+      // ========== 大運表の描画（関数内に移動）==========
+      function renderDaiunTable(pillars, gender, birthYear) {
+        const section = document.getElementById('daiunSection');
+        const tbody = document.querySelector('#daiunTable tbody');
+        if (!section || !tbody) return;
+
+        try {
+          const yearStem = pickStem(pillars.year);
+          const stemYinYang = YANG_STEMS.includes(yearStem) ? '陽' : '陰';
+          const isForward = (gender === 'male' && stemYinYang === '陽') ||
+                            (gender === 'female' && stemYinYang === '陰');
+
+          const startAge = 10;
+          const monthBranch = pickBranch(pillars.month);
+          const monthStem = pickStem(pillars.month);
+
+          const stems = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+          const branches = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+
+          const currentStemIdx = stems.indexOf(monthStem);
+          const currentBranchIdx = branches.indexOf(monthBranch);
+          tbody.innerHTML = '';
+
+          for (let i = 0; i < 10; i++) {
+            const age = startAge + (i * 10);
+            const year = birthYear + age;
+
+            const step = isForward ? i + 1 : -(i + 1);
+            const stemIdx = (currentStemIdx + step + 10) % 10;
+            const branchIdx = (currentBranchIdx + step + 12) % 12;
+
+            const daiunStem = stems[stemIdx];
+            const daiunBranch = branches[branchIdx];
+            const daiunGanshi = daiunStem + daiunBranch;
+
+            const tongbianStem = tenGodExact(dG, daiunStem);
+            const z = ZANG[daiunBranch];
+            const mainZanggan = z?.hon || '';
+            const tongbianBranch = mainZanggan ? tenGodExact(dG, mainZanggan) : '';
+            const juniunsei = stage12Of(dG, daiunBranch);
+
+            const relations = [];
+            [
+              {key: 'year', label: '年'},
+              {key: 'month', label: '月'},
+              {key: 'day', label: '日'},
+              {key: 'time', label: '時'}
+            ].forEach(({key, label}) => {
+              const pBranch = pickBranch(pillars[key]);
+              if (CHONG.some(([a,b]) => (a===daiunBranch&&b===pBranch)||(a===pBranch&&b===daiunBranch))) {
+                relations.push(`${label}支と冲`);
+              }
+            });
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${age}〜${age+9}歳<br><span class="muted">(${year}〜${year+9})</span></td>
+              <td><strong>${daiunGanshi}</strong></td>
+              <td>天干: ${tongbianStem || '—'}<br>地支: ${tongbianBranch || '—'}</td>
+              <td>${juniunsei || '—'}</td>
+              <td>${relations.length > 0 ? relations.join('<br>') : '—'}</td>`;
+            tbody.appendChild(tr);
+          }
+
+          section.style.display = 'block';
+        } catch (err) {
+          console.error('大運表の描画エラー:', err);
         }
-        
-        // 通変星バッジ作成
-        const span = makeBadge(tgStr);
-        
-        // 該当蔵干の五行で色付け
-        if (picked.stem) {
-          const el = stemElement[picked.stem];
-          if (el) span.classList.add('el-' + el);
-        }
-        
-        cell.appendChild(span);
       }
-      
-      fillBadge('c_time_zang_tg_main',  pickTime);
-      fillBadge('c_day_zang_tg_main',   pickDay);
-      fillBadge('c_month_zang_tg_main', pickMonth);
-      fillBadge('c_year_zang_tg_main',  pickYear);
 
-      const sYear  = stage12Of(dG, yB) || '－';
-      const sMonth = stage12Of(dG, mB) || '－';
-      const sDay   = stage12Of(dG, dB) || '－';
-      const sTime  = stage12Of(dG, hB) || '－';
-      setText('c_year_12un',  sYear);
-      setText('c_month_12un', sMonth);
-      setText('c_day_12un',   sDay);
-      setText('c_time_12un',  sTime);
-
-      const STAGE_ENERGY = {
-        '胎':3, '養':6, '長生':9, '沐浴':7,
-        '冠帯':10, '建禄':11, '帝旺':12,
-        '衰':8, '病':4, '死':2, '墓':5, '絶':1, '臨官':11
-      };
-      setText('c_year_12un_val',  STAGE_ENERGY[sYear]  ? String(STAGE_ENERGY[sYear])  : '－');
-      setText('c_month_12un_val', STAGE_ENERGY[sMonth] ? String(STAGE_ENERGY[sMonth]) : '－');
-      setText('c_day_12un_val',   STAGE_ENERGY[sDay]   ? String(STAGE_ENERGY[sDay])   : '－');
-      setText('c_time_12un_val',  STAGE_ENERGY[sTime]  ? String(STAGE_ENERGY[sTime])  : '－');
-
-      const dayKW  = kongwangPairByGanzhi(Dc);
-      const yearKW = kongwangPairByGanzhi(Yc);
-      setText('kwDay',  dayKW  ? `日天中殺：${dayKW[0]}・${dayKW[1]}`   : '日天中殺：－');
-      setText('kwYear', yearKW ? `生年天中殺：${yearKW[0]}・${yearKW[1]}` : '生年天中殺：－');
-
-      console.log('[BLOCK] classic finished');
+      // 大運表を描画
+      const birthYear = parseInt(q.get('year')) || Y;
+      const gender = q.get('gender') || 'male';
+      renderDaiunTable(pillars, gender, birthYear);
     }
 
-    waitForId('c_year_g').then((hasClassic) => {
-      console.log('[CHECK] c_year_g present after wait?', hasClassic);
-      if (!hasClassic){
-        console.warn('[BLOCK] classic not found: #c_year_g（DOM未構築）');
-        return;
+    // 命式表の要素が存在するか確認してから描画
+    const hasClassicTable = document.getElementById('c_time_gz');
+    if (hasClassicTable) {
+      const ready = await waitForId('c_time_gz');
+      if (ready) {
+        renderClassic();
+        console.log('[CLASSIC] 命式表描画完了');
       }
-      try { renderClassic(); }
-      catch (subErr) {
-        console.error('[Classic table block error]', subErr);
-        const d = $('diag');
-        if (d) d.textContent = 'クラシック表の描画中にエラー：' + (subErr?.message || subErr);
-      }
-    });
+    }
 
-  } catch (e) {
-    console.error(e);
-    const d = $('diag');
-    if (d) d.textContent = '処理中にエラー：' + (e?.message || e);
+    console.log('[BOOT] app.js end');
+
+  } catch (err) {
+    console.error('[ERROR] main:', err);
+    if ($('summary')) {
+      $('summary').textContent = 'エラーが発生しました: ' + err.message;
+    }
   }
 })();
-
-console.log('[BOOT] app.js end');
