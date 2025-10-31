@@ -209,22 +209,28 @@ function makeFiveRadarSVG(counts, opt={}){
 }
 
 /* ===================== 陰陽パイ ===================== */
-function renderYinYangPie(container, yin, yang) {
+function renderYinYangPie(container, yin, yang, opt = {}) {
   const el = (typeof container === 'string') ? document.getElementById(container) : container;
   if (!el) return;
   while (el.firstChild) el.removeChild(el.firstChild);
+
+  const size = Number(opt.size) || 260;     // ★ レーダーと同じサイズにできる
+  const W = size, H = size, CX = W/2, CY = H/2, R = Math.floor(size * 0.42);
+
   const total = (yin|0) + (yang|0);
-  const W = 140, H = 140, CX = W/2, CY = H/2, R = 60;
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width',  W);
+  svg.setAttribute('height', H);
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.display = 'block';
 
   const arcPath = (cx, cy, r, startRad, endRad) => {
     const x0 = cx + r * Math.cos(startRad);
     const y0 = cy + r * Math.sin(startRad);
     const x1 = cx + r * Math.cos(endRad);
     const y1 = cy + r * Math.sin(endRad);
-    const large = ((endRad - startRad + Math.PI*2) % (Math.PI*2)) > Math.PI ? 1 : 0;
+    const large = (((endRad - startRad) % (Math.PI*2) + Math.PI*2) % (Math.PI*2)) > Math.PI ? 1 : 0;
     return `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
   };
 
@@ -235,35 +241,37 @@ function renderYinYangPie(container, yin, yang) {
     el.appendChild(p); return;
   }
 
-  if (yin === total) {
-    const c = document.createElementNS(svg.namespaceURI, 'circle');
+  if (yin === total || yang === total) {
+    // 100% 片側ケース
+    const c = document.createElementNS(ns, 'circle');
     c.setAttribute('cx', CX); c.setAttribute('cy', CY); c.setAttribute('r', R);
-    c.setAttribute('fill', '#bdbdbd'); c.setAttribute('stroke', '#bdbdbd'); c.setAttribute('stroke-width', '1');
-    svg.appendChild(c);
-  } else if (yang === total) {
-    const c = document.createElementNS(svg.namespaceURI, 'circle');
-    c.setAttribute('cx', CX); c.setAttribute('cy', CY); c.setAttribute('r', R);
-    c.setAttribute('fill', '#ffffff'); c.setAttribute('stroke', '#d0d0d0'); c.setAttribute('stroke-width', '2');
+    c.setAttribute('fill', yin === total ? '#bdbdbd' : '#ffffff');
+    c.setAttribute('stroke', '#d0d0d0'); c.setAttribute('stroke-width', '1');
     svg.appendChild(c);
   } else {
     const start = -Math.PI / 2;
     const yangRad = (yang / total) * Math.PI * 2;
-    const pathYang = document.createElementNS(svg.namespaceURI, 'path');
+    const pathYang = document.createElementNS(ns, 'path');
     pathYang.setAttribute('d', arcPath(CX, CY, R, start, start + yangRad));
     pathYang.setAttribute('fill', '#ffe8c6'); pathYang.setAttribute('stroke', '#fff'); pathYang.setAttribute('stroke-width', '0.5');
     svg.appendChild(pathYang);
-    const pathYin = document.createElementNS(svg.namespaceURI, 'path');
+    const pathYin = document.createElementNS(ns, 'path');
     pathYin.setAttribute('d', arcPath(CX, CY, R, start + yangRad, start + Math.PI*2));
     pathYin.setAttribute('fill', '#e7e9ff'); pathYin.setAttribute('stroke', '#fff'); pathYin.setAttribute('stroke-width', '0.5');
     svg.appendChild(pathYin);
   }
-  const label = document.createElementNS(svg.namespaceURI, 'text');
+
+  // 中央ラベル
+  const label = document.createElementNS(ns, 'text');
   label.setAttribute('x', CX); label.setAttribute('y', CY + 4);
-  label.setAttribute('text-anchor', 'middle'); label.setAttribute('font-size', '12'); label.setAttribute('fill', '#333');
+  label.setAttribute('text-anchor', 'middle'); label.setAttribute('font-size', Math.round(size*0.07));
+  label.setAttribute('fill', '#333');
   label.textContent = `陽${yang}：陰${yin}`;
   svg.appendChild(label);
+
   el.appendChild(svg);
 }
+
 
 /* ===================== 2) ベース定義 ===================== */
 const stemElement={'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
@@ -823,59 +831,54 @@ const rawLnYears = params.lnYears;   // 例：?lnYears=12
   console.log('[十二運星] デバッグ終了');
 })();
 
+console.log('[BALANCE] hosts:',
+  !!$('energy'), !!$('fiveRadar'), !!$('yyWrap'), !!$('yyChart'));
 
-    (function renderFiveBalance(){
-      const order = ['木','火','土','金','水'];
-      const cnt = { 木:0, 火:0, 土:0, 金:0, 水:0 };
-      [yG, mG, dG, hG].forEach(s => { const el = stemElement[s]; if (el) cnt[el] += 1; });
-      [yB, mB, dB, hB].forEach(b => { const el = branchElement[b]; if (el) cnt[el] += 1; });
-      const wrap = $('energy');
-      if (wrap){
-        while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
-        const row = order.map(k => cnt[k]);
-        wrap.appendChild(createTable(order, [row]));
-        const header = wrap.previousElementSibling;
-        if (header && header.tagName === 'H2') header.textContent = '五行バランス';
-        wrap.appendChild( makeFiveRadarSVG(cnt, {size:260, max:8}) );
-      }
-      window.__fiveCounts = cnt;
+(function renderFiveBalance(){
+  const order = ['木','火','土','金','水'];
+  const cnt = { 木:0, 火:0, 土:0, 金:0, 水:0 };
 
-      (function renderYinYang(){
-        const yy = { 陽:0, 陰:0 };
-        [yG, mG, dG, hG].forEach(s => { if (s) yy[ yinYangOfStem(s) ]++; });
-        [yB, mB, dB, hB].forEach(b => { if (b) yy[ yinYangOfBranch(b) ]++; });
-        window.__yyCounts = yy;
-        const energyWrap = $('energy');
-        if (!energyWrap) return;
-        const h2 = document.createElement('h2');
-        h2.textContent = '陰陽バランス';
-        energyWrap.parentNode.insertBefore(h2, energyWrap.nextSibling);
-        const yyWrap = document.createElement('div');
-        yyWrap.id = 'yybalance';
-        yyWrap.style.marginTop = '6px';
-        energyWrap.parentNode.insertBefore(yyWrap, h2.nextSibling);
-        const tbl = createTable(['陽','陰'], [[yy.陽, yy.陰]]);
-        yyWrap.appendChild(tbl);
-        const pieHost = document.createElement('div');
-        pieHost.id = 'yyChart';
-        pieHost.style.display = 'block';
-        pieHost.style.margin = '8px auto';
-        yyWrap.appendChild(pieHost);
-        renderYinYangPie(pieHost, yy.陰, yy.陽);
-        const strengthBox = $('strength')?.parentElement;
-        const kakkyokuBox = $('kakkyoku')?.parentElement;
-        if (strengthBox && kakkyokuBox){
-          const host = document.createElement('div');
-          host.style.display = 'grid';
-          host.style.gridTemplateColumns = '1fr 1fr';
-          host.style.gap = '14px';
-          host.style.marginTop = '10px';
-          yyWrap.parentNode.insertBefore(host, yyWrap.nextSibling);
-          host.appendChild(strengthBox);
-          host.appendChild(kakkyokuBox);
-        }
-      })();
-    })();
+  // 命式の天干・地支からカウント
+  [yG, mG, dG, hG].forEach(s => { const el = stemElement[s]; if (el) cnt[el] += 1; });
+  [yB, mB, dB, hB].forEach(b => { const el = branchElement[b]; if (el) cnt[el] += 1; });
+
+  // ===== 左カラム：五行表＋レーダー =====
+  const energyHost = $('energy');
+  if (energyHost){
+    while (energyHost.firstChild) energyHost.removeChild(energyHost.firstChild);
+    const row = order.map(k => cnt[k]);
+    energyHost.appendChild( createTable(order, [row]) );
+  }
+  const radarHost = $('fiveRadar');
+  if (radarHost){
+    while (radarHost.firstChild) radarHost.removeChild(radarHost.firstChild);
+    radarHost.appendChild( makeFiveRadarSVG(cnt, {size:260, max:8}) );
+  }
+
+  // 保存（他ロジックで利用）
+  window.__fiveCounts = cnt;
+
+  // ===== 右カラム：陰陽表＋円グラフ =====
+  const yy = { 陽:0, 陰:0 };
+  [yG, mG, dG, hG].forEach(s => { if (s) yy[ yinYangOfStem(s) ]++; });
+  [yB, mB, dB, hB].forEach(b => { if (b) yy[ yinYangOfBranch(b) ]++; });
+  window.__yyCounts = yy;
+
+  const yyWrap = $('yyWrap');
+  if (yyWrap){
+    while (yyWrap.firstChild) yyWrap.removeChild(yyWrap.firstChild);
+    yyWrap.appendChild( createTable(['陽','陰'], [[yy.陽, yy.陰]]) );
+  }
+  const yyChartHost = $('yyChart');
+  if (yyChartHost){
+    while (yyChartHost.firstChild) yyChartHost.removeChild(yyChartHost.firstChild);
+renderYinYangPie(yyChartHost, yy.陰, yy.陽, { size: 260 });   // ★ レーダーと同サイズ
+
+  }
+
+  // （任意）既存の「身強弱」「格局」をこの下に並べたい場合は、ここでappendChildすればOK
+})();
+
 
     const fiveCounts = window.__fiveCounts || {木:0,火:0,土:0,金:0,水:0};
     const fiveForStrength = {
