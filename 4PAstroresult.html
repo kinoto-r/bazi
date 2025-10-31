@@ -139,6 +139,18 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
 .badge-zy.el-金 { background:#dbe8ff !important; border-color:#b9d0ff !important; }
 .badge-zy.el-水 { background:#d9f2ff !important; border-color:#aee6ff !important; }
 
+.balance-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  align-items:start;
+}
+@media (max-width:900px){
+  .balance-grid{ grid-template-columns:1fr; }
+}
+
+#fiveRadar svg, #yyChart svg { max-width:100%; height:auto; }
+
 </style>
 
 </head>
@@ -307,10 +319,23 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
     </tbody>
   </table>
 </div>
-  <!-- エネルギー -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
-    <div><h2>五行バランス</h2><div id="energy"></div></div>
+<!-- エネルギー（左右2カラム） -->
+<div class="balance-grid">
+  <!-- 左：五行バランス -->
+  <div>
+    <h2>五行バランス</h2>
+    <div id="energy"></div>       <!-- 五行表の描画先 -->
+    <div id="fiveRadar"></div>    <!-- レーダーチャートの描画先 -->
   </div>
+
+  <!-- 右：陰陽バランス -->
+  <div>
+    <h2>陰陽バランス</h2>
+    <div id="yyWrap"></div>       <!-- 陰陽表の描画先 -->
+    <div id="yyChart"></div>      <!-- 円グラフの描画先 -->
+  </div>
+</div>
+
 
   <!-- 成敗 -->
   <h2>成敗ロジック</h2>
@@ -340,7 +365,7 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
 <!-- ライブラリ（同階層の index.global.js） -->
 <script src="./index.global.js?v=1" charset="utf-8"></script>
 <!-- 本体 -->
-<script defer src="./app.js?v=62" charset="utf-8"></script>
+<script defer src="./app.js?v=64" charset="utf-8"></script>
 
 <!-- ▼▼▼ 大運表（表示専用。app.js が描画） ▼▼▼ -->
 <style>
