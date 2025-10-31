@@ -38,16 +38,13 @@ function badge(text){
   return span; 
 }
 
-// ===== バッジ描画（共通）：文字/配列どちらの第2引数にも対応 =====
 function makeBadge(text, toneOrClasses = null){
   const sp = document.createElement('span');
   sp.textContent = text;
-  sp.classList.add('badge-zy'); // 共通クラス
-
+  sp.classList.add('badge-zy');
   if (Array.isArray(toneOrClasses)) {
     if (toneOrClasses.length) sp.classList.add(...toneOrClasses);
   } else if (typeof toneOrClasses === 'string' && toneOrClasses) {
-    // 既存の makeBadge(yy, 'yang'|'yin'|'neutral') 呼び出しに対応
     sp.classList.add(toneOrClasses);
   }
   return sp;
@@ -56,7 +53,72 @@ function makeBadge(text, toneOrClasses = null){
 const pickStem   = p => (p && p.chinese) ? p.chinese.charAt(0) : '';
 const pickBranch = p => (p && p.chinese) ? p.chinese.charAt(1) : '';
 
-// 五行レーダー（SVG）。order=木火土金水、max は軸の最大値（干支だけなら 8 固定が見やすい）
+/* ===================== パラメータ解析（403回避） ===================== */
+function safeParseParams() {
+  const params = {};
+  
+  const search = window.location.search;
+  if (search) {
+    const sp = new URLSearchParams(search);
+    sp.forEach((value, key) => {
+      params[key] = value;
+    });
+  }
+  
+  const hash = window.location.hash;
+  if (hash && hash.length > 1) {
+    const hashStr = hash.substring(1);
+    const pairs = hashStr.split('&');
+    
+    pairs.forEach(pair => {
+      if (!pair) return;
+      const eqIndex = pair.indexOf('=');
+      if (eqIndex === -1) return;
+      
+      let key = pair.substring(0, eqIndex);
+      let value = pair.substring(eqIndex + 1);
+      
+      key = convertFullToHalf(key);
+      value = convertFullToHalf(value);
+      
+      try {
+        key = decodeURIComponent(key);
+        value = decodeURIComponent(value);
+      } catch (e) {}
+      
+      if (!params[key]) {
+        params[key] = value;
+      }
+    });
+  }
+  
+  return params;
+}
+
+function convertFullToHalf(str) {
+  if (!str) return '';
+  return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => 
+    String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+  ).replace(/：/g, ':')
+    .replace(/－/g, '-')
+    .replace(/＿/g, '_')
+    .replace(/，/g, ',')
+    .replace(/．/g, '.')
+    .replace(/＆/g, '&')
+    .replace(/＝/g, '=')
+    .replace(/？/g, '?')
+    .replace(/／/g, '/')
+    .replace(/＋/g, '+')
+    .replace(/（/g, '(')
+    .replace(/）/g, ')')
+    .replace(/［/g, '[')
+    .replace(/］/g, ']')
+    .replace(/｛/g, '{')
+    .replace(/｝/g, '}')
+    .replace(/　/g, ' ');
+}
+
+/* ===================== 五行レーダー ===================== */
 function makeFiveRadarSVG(counts, opt={}){
   const order = ['木','火','土','金','水'];
   const size = opt.size || 260;
@@ -75,7 +137,6 @@ function makeFiveRadarSVG(counts, opt={}){
   gGrid.setAttribute('stroke', '#ddd');
   gGrid.setAttribute('fill', 'none');
 
-  // 同心五角形 3 本（目安線）
   [1/3, 2/3, 1].forEach(f=>{
     const rr = r * f;
     const path = document.createElementNS(ns, 'path');
@@ -85,7 +146,6 @@ function makeFiveRadarSVG(counts, opt={}){
   });
   svg.appendChild(gGrid);
 
-  // 軸線 & ラベル
   const gAxis = document.createElementNS(ns, 'g');
   gAxis.setAttribute('stroke', '#ccc');
   gAxis.setAttribute('fill', '#666');
@@ -112,7 +172,6 @@ function makeFiveRadarSVG(counts, opt={}){
   });
   svg.appendChild(gAxis);
 
-  // 値ポリゴン
   const pts = order.map((k,i)=>{
     const v = Math.max(0, Math.min(max, counts[k]||0));
     const rate = v / max;
@@ -127,7 +186,6 @@ function makeFiveRadarSVG(counts, opt={}){
   poly.setAttribute('stroke-width', '2');
   svg.appendChild(poly);
 
-  // 頂点点
   const gDots = document.createElementNS(ns, 'g');
   pts.forEach(([x,y])=>{
     const c = document.createElementNS(ns, 'circle');
@@ -150,13 +208,11 @@ function makeFiveRadarSVG(counts, opt={}){
   }
 }
 
-// ==== 陰陽バランス：円グラフ描画（全陰/全陽を特別表示） ====
+/* ===================== 陰陽パイ ===================== */
 function renderYinYangPie(container, yin, yang) {
   const el = (typeof container === 'string') ? document.getElementById(container) : container;
   if (!el) return;
-
   while (el.firstChild) el.removeChild(el.firstChild);
-
   const total = (yin|0) + (yang|0);
   const W = 140, H = 140, CX = W/2, CY = H/2, R = 60;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -174,7 +230,8 @@ function renderYinYangPie(container, yin, yang) {
 
   if (total <= 0) {
     const p = document.createElement('div');
-    p.textContent = 'データなし'; p.style.color = '#777'; p.style.fontSize = '12px';
+    p.textContent = 'データなし';
+    p.style.color = '#777'; p.style.fontSize = '12px';
     el.appendChild(p); return;
   }
 
@@ -191,24 +248,20 @@ function renderYinYangPie(container, yin, yang) {
   } else {
     const start = -Math.PI / 2;
     const yangRad = (yang / total) * Math.PI * 2;
-
     const pathYang = document.createElementNS(svg.namespaceURI, 'path');
     pathYang.setAttribute('d', arcPath(CX, CY, R, start, start + yangRad));
     pathYang.setAttribute('fill', '#ffe8c6'); pathYang.setAttribute('stroke', '#fff'); pathYang.setAttribute('stroke-width', '0.5');
     svg.appendChild(pathYang);
-
     const pathYin = document.createElementNS(svg.namespaceURI, 'path');
     pathYin.setAttribute('d', arcPath(CX, CY, R, start + yangRad, start + Math.PI*2));
     pathYin.setAttribute('fill', '#e7e9ff'); pathYin.setAttribute('stroke', '#fff'); pathYin.setAttribute('stroke-width', '0.5');
     svg.appendChild(pathYin);
   }
-
   const label = document.createElementNS(svg.namespaceURI, 'text');
   label.setAttribute('x', CX); label.setAttribute('y', CY + 4);
   label.setAttribute('text-anchor', 'middle'); label.setAttribute('font-size', '12'); label.setAttribute('fill', '#333');
   label.textContent = `陽${yang}：陰${yin}`;
   svg.appendChild(label);
-
   el.appendChild(svg);
 }
 
@@ -218,9 +271,7 @@ const branchElement = {
   '子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火',
   '午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水'
 };
-
 const stemEl = s => stemElement[s] || '';
-
 const gen={'木':'火','火':'土','土':'金','金':'水','水':'木'};
 const COUNTER={'木':'土','火':'金','土':'水','金':'木','水':'火'};
 
@@ -407,95 +458,112 @@ function tenGodExact(dayStem, targetStem){
   const dEl = stemElement[dayStem];
   const tEl = stemElement[targetStem];
   if (!dEl || !tEl) return '';
-
   const samePol = isYang(dayStem) === isYang(targetStem);
-
   if (dEl === tEl) return samePol ? '比肩' : '劫財';
   if (gen[tEl] === dEl) return samePol ? '偏印' : '印綬';
   if (gen[dEl] === tEl) return samePol ? '食神' : '傷官';
   if (COUNTER[dEl] === tEl) return samePol ? '偏財' : '正財';
   if (COUNTER[tEl] === dEl) return samePol ? '偏官' : '正官';
-
   return '';
 }
 
 const signEl = s => (isYang(s)?'＋':'－') + stemEl(s);
 
+/* ===== 十二運星（日干基準） ===== */
 const STAGE12 = {
   甲:{長生:'亥',沐浴:'子',冠帯:'丑',臨官:'寅',帝旺:'卯',衰:'辰',病:'巳',死:'午',墓:'未',絶:'申',胎:'酉',養:'戌'},
   乙:{長生:'午',沐浴:'巳',冠帯:'辰',臨官:'卯',帝旺:'寅',衰:'丑',病:'子',死:'亥',墓:'戌',絶:'酉',胎:'申',養:'未'},
   丙:{長生:'寅',沐浴:'卯',冠帯:'辰',臨官:'巳',帝旺:'午',衰:'未',病:'申',死:'酉',墓:'戌',絶:'亥',胎:'子',養:'丑'},
-  丁:{長生:'申',沐浴:'酉',冠帯:'戌',臨官:'亥',帝旺:'子',衰:'丑',病:'寅',死:'卯',墓:'辰',絶:'巳',胎:'午',養:'未'},
+  丁:{長生:'酉',沐浴:'申',冠帯:'未',臨官:'午',帝旺:'巳',衰:'辰',病:'卯',死:'寅',墓:'丑',絶:'子',胎:'亥',養:'戌'},
   戊:{長生:'寅',沐浴:'卯',冠帯:'辰',臨官:'巳',帝旺:'午',衰:'未',病:'申',死:'酉',墓:'戌',絶:'亥',胎:'子',養:'丑'},
-  己:{長生:'申',沐浴:'酉',冠帯:'戌',臨官:'亥',帝旺:'子',衰:'丑',病:'寅',死:'卯',墓:'辰',絶:'巳',胎:'午',養:'未'},
+  己:{長生:'酉',沐浴:'申',冠帯:'未',臨官:'午',帝旺:'巳',衰:'辰',病:'卯',死:'寅',墓:'丑',絶:'子',胎:'亥',養:'戌'},
   庚:{長生:'巳',沐浴:'午',冠帯:'未',臨官:'申',帝旺:'酉',衰:'戌',病:'亥',死:'子',墓:'丑',絶:'寅',胎:'卯',養:'辰'},
-  辛:{長生:'亥',沐浴:'子',冠帯:'丑',臨官:'寅',帝旺:'卯',衰:'辰',病:'巳',死:'午',墓:'未',絶:'申',胎:'酉',養:'戌'},
+  辛:{長生:'子',沐浴:'亥',冠帯:'戌',臨官:'酉',帝旺:'申',衰:'未',病:'午',死:'巳',墓:'辰',絶:'卯',胎:'寅',養:'丑'},
   壬:{長生:'申',沐浴:'酉',冠帯:'戌',臨官:'亥',帝旺:'子',衰:'丑',病:'寅',死:'卯',墓:'辰',絶:'巳',胎:'午',養:'未'},
-  癸:{長生:'寅',沐浴:'卯',冠帯:'辰',臨官:'巳',帝旺:'午',衰:'未',病:'申',死:'酉',墓:'戌',絶:'亥',胎:'子',養:'丑'},
+  癸:{長生:'卯',沐浴:'寅',冠帯:'丑',臨官:'子',帝旺:'亥',衰:'戌',病:'酉',死:'申',墓:'未',絶:'午',胎:'巳',養:'辰'}
 };
 
-function stage12Of(s, b){
-  const map = STAGE12[s]; if(!map) return '';
-  for(const [k,v] of Object.entries(map)){ if(v===normalizeBranch(b)) return k; }
+function stage12Of(dayStem, branch){
+  const map = STAGE12[dayStem];
+  if (!map) return '';
+  const nb = normalizeBranch(branch);
+  for (const [stageName, branchChar] of Object.entries(map)) {
+    if (branchChar === nb) return stageName;
+  }
   return '';
+}
+
+/* ===== 十二運星のエネルギー値（2025-10-31更新） ===== */
+/* 出典：あなたの指定した表（胎3／養6／長生9／沐浴7／冠帯10／建禄11／帝旺12／衰8／病4／死2／墓5／絶1） */
+const STAGE12_VALUES = {
+  '胎': 3,
+  '養': 6,
+  '長生': 9,
+  '沐浴': 7,
+  '冠帯': 10,
+  '建禄': 11,
+  '帝旺': 12,
+  '衰': 8,
+  '病': 4,
+  '死': 2,
+  '墓': 5,
+  '絶': 1
+};
+
+
+function stage12Value(stageName) {
+  return STAGE12_VALUES[stageName] || 0;
 }
 
 const isCounterPair = (a,b)=> COUNTER[stemEl(a)]===stemEl(b) || COUNTER[stemEl(b)]===stemEl(a);
 
-// ===== 月支蔵干から「代表の通変星（蔵干）」を1つ選ぶ =====
-// 優先順位：月干へ露干 > 年/時干へ露干（同順位なら 本>中>余）> 露干なし：本>中>余
-function selectZangTenGod(dayStem, monthBranch, stemsByPos){
-  // stemsByPos: { yearG, monthG, dayG, timeG }
+function selectZangTenGod(dayStem, monthBranch, stemsByPos) {
   const b = normalizeBranch(monthBranch);
-  const z = (b && ZANG[b]) ? ZANG[b] : {};
-  const order = ['hon','mid','rem'];     // 本>中>余
-  const labelOf = k => k==='hon' ? '本気' : (k==='mid' ? '中気' : '余気');
-  
-  // ① 月干に露干（最優先）
-  for (const k of order){
-    const ck = z[k]; if (!ck) continue;
-    if (stemsByPos.monthG && stemsByPos.monthG === ck){
-      const tg = tenGodExact(dayStem, ck) || '－';
-      return { tg, basis:`${labelOf(k)}「${ck}」が月干に露出`, src:'月干', zangKey:k, stem:ck };
+  const zang = ZANG[b];
+  if (!zang) return { tg: '－', basis: '蔵干なし', zangKey: null };
+
+  const zangLayers = [
+    { key: 'hon', label: '本気', stem: zang.hon },
+    { key: 'mid', label: '中気', stem: zang.mid },
+    { key: 'rem', label: '余気', stem: zang.rem },
+  ].filter(z => z.stem);
+
+  const visible = zangLayers.find(layer => 
+    Object.values(stemsByPos).includes(layer.stem)
+  );
+  if (visible) {
+    return {
+      tg: tenGodExact(dayStem, visible.stem) || '－',
+      basis: `${visible.label}「${visible.stem}」が天干に透出`,
+      zangKey: visible.key,
+      stem: visible.stem
+    };
+  }
+
+  for (const layer of zangLayers) {
+    const tg = tenGodExact(dayStem, layer.stem);
+    if (tg && tg !== '－') {
+      return {
+        tg,
+        basis: `${layer.label}「${layer.stem}」を採用（露干なし）`,
+        zangKey: layer.key,
+        stem: layer.stem
+      };
     }
   }
-  
-  // ② 年・時干に露干（本>中>余・見つかった時点で採用）
-  for (const k of order){
-    const ck = z[k]; if (!ck) continue;
-    if (stemsByPos.yearG === ck){
-      const tg = tenGodExact(dayStem, ck) || '－';
-      return { tg, basis:`${labelOf(k)}「${ck}」が年干に露出`, src:'年干', zangKey:k, stem:ck };
-    }
-    if (stemsByPos.timeG === ck){
-      const tg = tenGodExact(dayStem, ck) || '－';
-      return { tg, basis:`${labelOf(k)}「${ck}」が時干に露出`, src:'時干', zangKey:k, stem:ck };
-    }
-  }
-  
-  // ③ 露干なし → 本>中>余の順で採用
-  for (const k of order){
-    const ck = z[k]; if (!ck) continue;
-    const tg = tenGodExact(dayStem, ck) || '－';
-    return { tg, basis:`${labelOf(k)}「${ck}」を採用（露干なし）`, src:'深浅', zangKey:k, stem:ck };
-  }
-  
-  // 蔵干が無いケース
-  return { tg:'－', basis:'蔵干なし', src:'—', zangKey:null, stem:null };
+
+  return { tg: '－', basis: '蔵干該当なし', zangKey: null, stem: null };
 }
 
-// 通変星（蔵干）のセルに「陰陽＆五行」バッジ
 function paintTgCell(id){
   const cell = document.getElementById(id);
   if (!cell) return;
   const label = (cell.textContent || '').trim();
-  if (!label || label === '日主'){ return; }
+  if (!label || label === '　'){ return; }
   const parts = splitTgLabel(label);
   if (!parts.length) return;
-
   const frag = document.createDocumentFragment();
   frag.appendChild(document.createTextNode(label + ' '));
-
   parts.forEach((name, idx) => {
     const meta = TEN_GOD_META[name];
     if (!meta) return;
@@ -504,12 +572,11 @@ function paintTgCell(id){
     frag.appendChild(document.createTextNode(' '));
     frag.appendChild( makeBadge(meta.el) );
   });
-
   cell.innerHTML = '';
   cell.appendChild(frag);
 }
 
-/* ===================== 4) 実行部 IIFE Start===================== */
+/* ===================== 4) 実行部 IIFE Start ===================== */
 (async function main(){
   try {
     console.log('[BOOT] app.js start');
@@ -519,16 +586,28 @@ function paintTgCell(id){
 
     const loader = new Lib.BrowserDateMappingLoader('./src/dates_mapping.json');
     if (typeof loader.loadDateMappings === 'function') {
-      try { await loader.loadDateMappings(); } catch (e) {}
+      try { await loader.loadDateMappings(); } catch (e) { console.error('[LOADER]', e); }
     }
 
-    const q = new URLSearchParams(location.search);
-    const date = q.get('date') || '';
-    const time = q.get('time') || '12:00';
-    const tz   = q.get('tz')   || 'Asia/Tokyo';
-    const [wHon,wMid,wRem] = (q.get('w') || '1.0,0.6,0.3').split(',').map(Number);
-    const focusMul = 1;
-    const tokoBonus= parseFloat(q.get('tb') || '0.2');
+    const params = safeParseParams();
+
+    const rawDate   = params.date   || '';
+    const rawTime   = params.time   || '12:00';
+    const rawTz     = params.tz     || 'Asia/Tokyo';
+    const rawW      = params.w      || '1.0,0.6,0.3';
+    const rawTb     = params.tb     || '0.2';
+    const rawGender = (params.gender || 'male') + '';
+// 年運の開始年・行数（任意指定。指定がなければ出生年から10年分）
+const rawLnStart = params.lnStart;   // 例：?lnStart=2026
+const rawLnYears = params.lnYears;   // 例：?lnYears=12
+
+
+    const date = rawDate;
+    const time = /^\d{1,2}:\d{2}$/.test(rawTime) ? rawTime : '12:00';
+    const tz   = rawTz.replace(/[^\w/+\-]/g,'').slice(0,64);
+    const [wHon,wMid,wRem] = rawW.replace(/_/g,',').split(',').slice(0,3).map(Number);
+    const tokoBonus = parseFloat(rawTb) || 0.2;
+    const gender = rawGender.toLowerCase()==='female' ? 'female' : 'male';
 
     setText('summary',
       date
@@ -537,18 +616,22 @@ function paintTgCell(id){
     );
     const diag = $('diag'); if (diag) diag.textContent = '';
 
-    if (!date) return;
+    if (!date) {
+      console.warn('[PARAM] date なし。例: ?date=1990-01-01&time=12:00');
+      return;
+    }
 
     const [Y,M,D] = date.split('-').map(Number);
     const [hh] = time.split(':').map(Number);
     const hourInt = isFinite(hh) ? hh : 12;
-    const calc = new Lib.BaziCalculator(Y, M, D, hourInt, 'male', loader);
+
+    const calc = new Lib.BaziCalculator(Y, M, D, hourInt, gender, loader);
     const pillars = calc.calculatePillars();
 
     let basic;
     if (typeof calc.calculateBasicAnalysis === 'function') {
       try { basic = calc.calculateBasicAnalysis(); }
-      catch (e) { basic = { fiveFactors: {} }; }
+      catch (e) { console.error('[BASIC]', e); basic = { fiveFactors: {} }; }
     } else {
       basic = { fiveFactors: {} };
     }
@@ -560,113 +643,94 @@ function paintTgCell(id){
       return '';
     }
 
-    const yG = pickStem(pillars.year);
-    const mG = pickStem(pillars.month);
-    const dG = pickStem(pillars.day);
     const hG = pickStem(pillars.time);
+    const dG = pickStem(pillars.day);
+    const mG = pickStem(pillars.month);
+    const yG = pickStem(pillars.year);
 
-    const yB = getBranchSafe(pillars.year);
-    const mB = getBranchSafe(pillars.month);
-    const dB = getBranchSafe(pillars.day);
     const hB = getBranchSafe(pillars.time);
+    const dB = getBranchSafe(pillars.day);
+    const mB = getBranchSafe(pillars.month);
+    const yB = getBranchSafe(pillars.year);
 
     console.log('[CHK] stems:', { yG, mG, dG, hG });
     console.log('[CHK] branches:', { yB, mB, dB, hB });
-    console.log('========== VERSION: 2024-FIXED-ZHI-IDS ==========');
 
-    setText('y', pillars.year.chinese);
-    setText('m', pillars.month.chinese);
-    setText('d', pillars.day.chinese);
     setText('h', pillars.time.chinese);
+    setText('d', pillars.day.chinese);
+    setText('m', pillars.month.chinese);
+    setText('y', pillars.year.chinese);
 
-    console.log('[STEP1] 地支の値確認:', { yB, mB, dB, hB });
-    console.log('[STEP2] BRANCH_METAチェック - yB:', yB, BRANCH_META[yB]);
-    console.log('[STEP3] BRANCH_METAチェック - mB:', mB, BRANCH_META[mB]);
-
-    // 地支セル用フラグメント作成（支字＋陰陽＋五行バッジ）
     function buildZhiFrag(zhi){
       const frag = document.createDocumentFragment();
       const z = String(zhi || '').trim();
-      
-      console.log('[buildZhiFrag] 入力:', zhi, '→トリム後:', z);
-
       const main = document.createElement('span');
       main.textContent = z || '—';
       main.style.marginRight = '6px';
       frag.appendChild(main);
-
       const meta = BRANCH_META[z];
-      console.log('[buildZhiFrag] メタ情報:', z, '→', meta);
-      
       if (meta){
         const yyBadge = makeBadge(meta.yy, meta.yy === '陽' ? 'yang' : 'yin');
         frag.appendChild(yyBadge);
         frag.appendChild(document.createTextNode(' '));
-        
         const elBadge = makeBadge(meta.el);
         elBadge.classList.add('el-' + meta.el);
         frag.appendChild(elBadge);
-        
-        console.log('[buildZhiFrag] バッジ追加完了:', meta.yy, meta.el);
-      } else {
-        console.error('[buildZhiFrag] エラー: メタ情報なし for', z);
       }
       return frag;
     }
 
-    // 地支行にバッジを追加描画（HTMLの実際のID: zhi_h, zhi_d, zhi_m, zhi_y）
-    console.log('[STEP4] paintZhiRow 実行開始 <<<<<<');
-    (function paintZhiRowWithBadges(){
+    const ZHI_ID_SETS = [
+      ['c_year_zhi','c_month_zhi','c_day_zhi','c_time_zhi'],
+      ['zhi_y','zhi_m','zhi_d','zhi_h']
+    ];
+    function pickZhiIdSet(){
+      for (const set of ZHI_ID_SETS){
+        if (set.every(id => document.getElementById(id))) return set;
+      }
+      return ZHI_ID_SETS[0];
+    }
+    function paintZhiRowWithBadges(yB, mB, dB, hB){
+      const ids = pickZhiIdSet();
       const pairs = [
-        ['zhi_y', yB],  // 年
-        ['zhi_m', mB],  // 月
-        ['zhi_d', dB],  // 日
-        ['zhi_h', hB],  // 時
+        [ids[0], yB],
+        [ids[1], mB],
+        [ids[2], dB],
+        [ids[3], hB]
       ];
-      
       pairs.forEach(([id, zhi])=>{
-        console.log('[paintZhi] 処理中:', id, '←', zhi);
         const cell = document.getElementById(id);
-        if (!cell) {
-          console.error('[paintZhi] セル未発見:', id);
-          return;
-        }
-        console.log('[paintZhi] セル発見:', id);
+        if (!cell) { console.error('[paintZhi] セル未発見:', id); return; }
         cell.innerHTML = '';
-        const frag = buildZhiFrag(zhi);
-        cell.appendChild(frag);
-        console.log('[paintZhi] 描画完了:', id);
+        cell.appendChild( buildZhiFrag(zhi) );
       });
-      console.log('[STEP5] paintZhiRow 実行完了 >>>>>>');
-    })();
+    }
+    function setZhiTextAll(yB, mB, dB, hB){
+      const ids = pickZhiIdSet();
+      const map = [[ids[0], yB],[ids[1], mB],[ids[2], dB],[ids[3], hB]];
+      map.forEach(([id, val])=>{ const el = document.getElementById(id); if (el) el.textContent = val || '—'; });
+    }
 
-    // 天干セル用フラグメント作成（干＋陰陽＋五行バッジ）
     function buildStemFrag(stem) {
       const frag = document.createDocumentFragment();
       const s = String(stem || '').trim();
-
       const main = document.createElement('span');
       main.textContent = s || '—';
       main.style.marginRight = '6px';
       frag.appendChild(main);
-
       if (s) {
         const yy = YANG_STEMS.includes(s) ? '陽' : '陰';
         frag.appendChild( makeBadge(yy, yy === '陽' ? 'yang' : 'yin') );
         frag.appendChild(document.createTextNode(' '));
       }
-
       const element = stemElement[s];
       if (element) {
         const elBadge = makeBadge(element);
         elBadge.classList.add('el-' + element);
         frag.appendChild(elBadge);
       }
-
       return frag;
     }
-
-    // 天干行描画
     (function paintStemRow(){
       const map = { 
         c_time_g: hG, 
@@ -674,42 +738,97 @@ function paintTgCell(id){
         c_month_g: mG, 
         c_year_g: yG 
       };
-
       Object.entries(map).forEach(([id, stem])=>{
         const cell = document.getElementById(id);
         if (!cell) return;
         cell.innerHTML = '';
         cell.appendChild( buildStemFrag(stem) );
       });
-
-      console.log('[DBG] paintStemRow', map);
     })();
 
-    // 通変星（干）
-    setText('c_year_tg',  tenGodExact(dG, yG) || '－');
-    setText('c_month_tg', tenGodExact(dG, mG) || '－');
-    setText('c_day_tg',   '');
     setText('c_time_tg',  tenGodExact(dG, hG) || '－');
-
-    paintTgCell('c_year_tg');
-    paintTgCell('c_month_tg');
-    paintTgCell('c_day_tg');
+    setText('c_day_tg',   '　');
+    setText('c_month_tg', tenGodExact(dG, mG) || '－');
+    setText('c_year_tg',  tenGodExact(dG, yG) || '－');
     paintTgCell('c_time_tg');
+    paintTgCell('c_day_tg');
+    paintTgCell('c_month_tg');
+    paintTgCell('c_year_tg');
 
-    // 九星
-    const birthYear = Number((q.get('date')||'').slice(0,4));
-    if ($('c_kyusei') && birthYear){
-      setText('c_kyusei', kyuseiSimpleByYear(birthYear) + '（※簡易計算）');
+    const birthYearForKyusei = Number((date||'').slice(0,4));
+    if ($('c_kyusei') && birthYearForKyusei){
+      setText('c_kyusei', kyuseiSimpleByYear(birthYearForKyusei) + '（※簡易計算）');
     }
 
-    // 五行バランス
+ /* ===== 十二運星の描画（日干基準） ===== */
+(function renderStage12(){
+  console.log('[十二運星] デバッグ開始');
+  console.log('[十二運星] 日干 dG:', dG);
+
+  // HTMLは「時・日・月・年」の並び＆ID命名なので、それに合わせる
+  const map = [
+    { label: '時',  branch: hB, textId: 'c_time_12un',  valId: 'c_time_12un_val'  },
+    { label: '日',  branch: dB, textId: 'c_day_12un',   valId: 'c_day_12un_val'   },
+    { label: '月',  branch: mB, textId: 'c_month_12un', valId: 'c_month_12un_val' },
+    { label: '年',  branch: yB, textId: 'c_year_12un',  valId: 'c_year_12un_val'  },
+  ];
+
+  console.log('[十二運星] 地支配列(時→日→月→年):', map.map(x => x.branch));
+
+  map.forEach(({ label, branch, textId }) => {
+    console.log(`[十二運星] ${label}支: ${branch}`);
+    const stageName = stage12Of(dG, branch);
+    console.log(`[十二運星] ${label}支の十二運星: ${stageName || '（なし）'}`);
+
+    const cell = document.getElementById(textId);
+    console.log(`[十二運星] セルID ${textId} の存在:`, cell ? 'あり' : 'なし');
+
+    if (cell) {
+      cell.textContent = stageName || '—';
+      cell.classList.remove('yang','yin','neutral');
+
+      if (stageName) {
+        const val = stage12Value(stageName);
+        console.log(`[十二運星] ${label}支の数値: ${val}`);
+        if (val >= 8)       cell.classList.add('yang');
+        else if (val >= 5)  cell.classList.add('neutral');
+        else                cell.classList.add('yin');
+      } else {
+        cell.classList.add('neutral');
+      }
+      console.log(`[十二運星] ${label}支セル更新完了: textContent="${cell.textContent}", classes="${cell.className}"`);
+    }
+  });
+
+  // 「十二運（数）」の描画
+  map.forEach(({ label, branch, valId }) => {
+    const stageName = stage12Of(dG, branch);
+    const cell = document.getElementById(valId);
+    console.log(`[十二運星数] セルID ${valId} の存在:`, cell ? 'あり' : 'なし');
+
+    if (cell) {
+      const val = stage12Value(stageName);
+      cell.textContent = val > 0 ? val : '—';
+      cell.classList.remove('yang','yin','neutral');
+
+      if (val >= 8)       cell.classList.add('yang');
+      else if (val >= 5)  cell.classList.add('neutral');
+      else if (val > 0)   cell.classList.add('yin');
+      else                cell.classList.add('neutral');
+
+      console.log(`[十二運星数] ${label}支更新完了: textContent="${cell.textContent}", classes="${cell.className}"`);
+    }
+  });
+
+  console.log('[十二運星] デバッグ終了');
+})();
+
+
     (function renderFiveBalance(){
       const order = ['木','火','土','金','水'];
       const cnt = { 木:0, 火:0, 土:0, 金:0, 水:0 };
-
       [yG, mG, dG, hG].forEach(s => { const el = stemElement[s]; if (el) cnt[el] += 1; });
       [yB, mB, dB, hB].forEach(b => { const el = branchElement[b]; if (el) cnt[el] += 1; });
-
       const wrap = $('energy');
       if (wrap){
         while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
@@ -719,7 +838,6 @@ function paintTgCell(id){
         if (header && header.tagName === 'H2') header.textContent = '五行バランス';
         wrap.appendChild( makeFiveRadarSVG(cnt, {size:260, max:8}) );
       }
-
       window.__fiveCounts = cnt;
 
       (function renderYinYang(){
@@ -727,29 +845,23 @@ function paintTgCell(id){
         [yG, mG, dG, hG].forEach(s => { if (s) yy[ yinYangOfStem(s) ]++; });
         [yB, mB, dB, hB].forEach(b => { if (b) yy[ yinYangOfBranch(b) ]++; });
         window.__yyCounts = yy;
-
         const energyWrap = $('energy');
         if (!energyWrap) return;
-
         const h2 = document.createElement('h2');
         h2.textContent = '陰陽バランス';
         energyWrap.parentNode.insertBefore(h2, energyWrap.nextSibling);
-
         const yyWrap = document.createElement('div');
         yyWrap.id = 'yybalance';
         yyWrap.style.marginTop = '6px';
         energyWrap.parentNode.insertBefore(yyWrap, h2.nextSibling);
-
         const tbl = createTable(['陽','陰'], [[yy.陽, yy.陰]]);
         yyWrap.appendChild(tbl);
-
         const pieHost = document.createElement('div');
         pieHost.id = 'yyChart';
         pieHost.style.display = 'block';
         pieHost.style.margin = '8px auto';
         yyWrap.appendChild(pieHost);
         renderYinYangPie(pieHost, yy.陰, yy.陽);
-
         const strengthBox = $('strength')?.parentElement;
         const kakkyokuBox = $('kakkyoku')?.parentElement;
         if (strengthBox && kakkyokuBox){
@@ -763,10 +875,8 @@ function paintTgCell(id){
           host.appendChild(kakkyokuBox);
         }
       })();
-
     })();
 
-    // 身強弱
     const fiveCounts = window.__fiveCounts || {木:0,火:0,土:0,金:0,水:0};
     const fiveForStrength = {
       WOOD:  fiveCounts.木,
@@ -776,7 +886,6 @@ function paintTgCell(id){
       WATER: fiveCounts.水
     };
     const st = judgeStrength(fiveForStrength, dG);
-
     const stW = $('strength');
     if (stW){
       stW.innerHTML='';
@@ -787,7 +896,6 @@ function paintTgCell(id){
       stW.appendChild(span);
     }
 
-    // 格局 + 用神
     const kk = judgeKakkyoku(dG, mB, st.label);
     const kkW = $('kakkyoku');
     if (kkW){
@@ -809,16 +917,13 @@ function paintTgCell(id){
       );
     }
 
-    // 成敗：透干・合冲刑害・調候
     const toko = detectToko(pillars);
     const rel  = detectRelations(pillars);
     const chk  = judgeChoko(mB, fiveCounts);
-
     const tWrap = $('toko');      if (tWrap){ tWrap.innerHTML=''; tWrap.appendChild(createList(toko)); }
     const rWrap = $('relations'); if (rWrap){ rWrap.innerHTML=''; rWrap.appendChild(createList(rel)); }
     const cWrap = $('choko');     if (cWrap){ cWrap.textContent = chk.text; }
 
-    // 天剋地冲
     const tkdc = [];
     const cols=['年','月','日','時'], stems=[yG,mG,dG,hG], brs=[yB,mB,dB,hB];
     const isChong=(a,b)=> CHONG.some(p=> (p[0]===a&&p[1]===b)||(p[0]===b&&p[1]===a));
@@ -829,7 +934,6 @@ function paintTgCell(id){
     }
     if ($('tkdc')) { $('tkdc').innerHTML = ''; $('tkdc').appendChild(createList(tkdc.length?tkdc:['該当なし'])); }
 
-    // 守護神
     if ($('guardian')) {
       const asStem = (el) => GUARDIAN_DEFAULT_STEM[el] || '－';
       const parts = [];
@@ -838,15 +942,28 @@ function paintTgCell(id){
       $('guardian').textContent = parts.length ? parts.join('　') : '—';
     }
 
-    // 天中殺
-    const kubo = $('kubo');
-    if (kubo){
-      kubo.innerHTML = '';
-      kubo.appendChild( renderKuboBlock('日天中殺',  kongwangPairByGanzhi(pillars.day.chinese)) );
-      kubo.appendChild( renderKuboBlock('生年天中殺', kongwangPairByGanzhi(pillars.year.chinese)) );
-    }
 
-    /* ========== クラシック命式表：待機してから描画 ========== */
+
+
+    try{
+      const stemsByPos = { yearG:yG, monthG:mG, dayG:dG, timeG:hG };
+
+      const defs = [
+        { pillar:'year',  branch:yB, mainId:'c_year_zang_tg_main',  basisId:'c_year_zang_tg_basis'  },
+        { pillar:'month', branch:mB, mainId:'c_month_zang_tg_main', basisId:'c_month_zang_tg_basis' },
+        { pillar:'day',   branch:dB, mainId:'c_day_zang_tg_main',   basisId:'c_day_zang_tg_basis'   },
+        { pillar:'time',  branch:hB, mainId:'c_time_zang_tg_main',  basisId:'c_time_zang_tg_basis'  },
+      ];
+
+      defs.forEach(({ pillar, branch, mainId, basisId })=>{
+        const rep = selectZangTenGod(dG, branch, stemsByPos, pillar);
+        const mainEl  = document.getElementById(mainId);
+        const basisEl = document.getElementById(basisId);
+        if (mainEl)  mainEl.textContent  = rep.tg || '－';
+        if (basisEl) basisEl.textContent = rep.basis || '';
+      });
+    } catch(e){ console.error('[ZANG_TG]', e); }
+
     function waitForId(id, tries = 40, intervalMs = 50){
       return new Promise(resolve => {
         let i = 0;
@@ -859,15 +976,48 @@ function paintTgCell(id){
     }
 
     function renderClassic(){
-      const Yc = pillars.year.chinese;
-      const Mc = pillars.month.chinese;
-      const Dc = pillars.day.chinese;
       const Hc = pillars.time.chinese;
+      const Dc = pillars.day.chinese;
+      const Mc = pillars.month.chinese;
+      const Yc = pillars.year.chinese;
 
       setText('c_time_gz',  Hc);
       setText('c_day_gz',   Dc);
       setText('c_month_gz', Mc);
       setText('c_year_gz',  Yc);
+
+      /* ===== 生年天中殺 / 日中天中殺（空亡） ===== */
+      try {
+        const dayGZ  = String(pillars.day?.chinese || '').trim();
+        const yearGZ = String(pillars.year?.chinese || '').trim();
+
+        const dayPair  = kongwangPairByGanzhi(dayGZ);
+        const yearPair = kongwangPairByGanzhi(yearGZ);
+
+        const fmt = (pair) => {
+          if (!pair || pair.length !== 2) return '—';
+          const [a, b] = pair;
+          return `${a}・${b}`; // 絵文字は任意。必要なら BRANCH_EMOJI を足してOK
+        };
+
+        const yearCell = document.getElementById('kwYear');
+        const dayCell  = document.getElementById('kwDay');
+        console.log('[KUBO] kwYear存在:', !!yearCell, 'kwDay存在:', !!dayCell, 'dayGZ:', dayGZ, 'yearGZ:', yearGZ);
+
+        if (yearCell) {
+          yearCell.textContent = fmt(yearPair);
+          yearCell.classList.remove('yin','yang');
+          yearCell.classList.add('neutral');
+        }
+        if (dayCell) {
+          dayCell.textContent = fmt(dayPair);
+          dayCell.classList.remove('yin','yang');
+          dayCell.classList.add('neutral');
+        }
+      } catch (e) {
+        console.error('[KUBO] 描画エラー:', e);
+      }
+
 
       setText('c_time_g',  hG);
       setText('c_day_g',   dG);
@@ -887,10 +1037,8 @@ function paintTgCell(id){
         cell.appendChild(elBadge2);
       });
 
-      setText('c_time_zhi',  hB);
-      setText('c_day_zhi',   dB);
-      setText('c_month_zhi', mB);
-      setText('c_year_zhi',  yB);
+      setZhiTextAll(yB, mB, dB, hB);
+      paintZhiRowWithBadges(yB, mB, dB, hB);
 
       setText('c_time_gogyou',  signEl(hG));      
       setText('c_day_gogyou',   signEl(dG));
@@ -898,7 +1046,7 @@ function paintTgCell(id){
       setText('c_year_gogyou',  signEl(yG));
 
       setText('c_time_tg',  tenGodExact(dG, hG) || '－');
-      setText('c_day_tg',   '');
+      setText('c_day_tg',   '　');
       setText('c_month_tg', tenGodExact(dG, mG) || '－');
       setText('c_year_tg',  tenGodExact(dG, yG) || '－');
 
@@ -919,7 +1067,7 @@ function paintTgCell(id){
         });
       };
       paintZangBadgesOnly('c_year',  yB);
-      paintZangBadgesOnly('c_month', mB);
+      paintZangBadgesOnly('c_month', mB); 
       paintZangBadgesOnly('c_day',   dB);
       paintZangBadgesOnly('c_time',  hB);
 
@@ -929,101 +1077,224 @@ function paintTgCell(id){
         const tgMap = {
           hon: z.hon ? tenGodExact(dG, z.hon) : '－',
           mid: z.mid ? tenGodExact(dG, z.mid) : '－',
-          rem: z.rem ? tenGodExact(dG, z.rem) : '－',
+          rem: z.rem ? tenGodExact(dG, z.rem) : '－'
         };
         [['hon','_zang_tg_hon'],['mid','_zang_tg_mid'],['rem','_zang_tg_rem']].forEach(([k,suf])=>{
           const el = document.getElementById(prefix + suf);
           if (el) el.textContent = tgMap[k];
         });
       };
-      paintZangTG('c_year',  yB);
-      paintZangTG('c_month', mB);
-      paintZangTG('c_day',   dB);
       paintZangTG('c_time',  hB);
+      paintZangTG('c_day',   dB);
+      paintZangTG('c_month', mB);
+      paintZangTG('c_year',  yB);
 
-      // ========== 大運表の描画（関数内に移動）==========
-      function renderDaiunTable(pillars, gender, birthYear) {
-        const section = document.getElementById('daiunSection');
-        const tbody = document.querySelector('#daiunTable tbody');
-        if (!section || !tbody) return;
+/* ===== 大運表（0歳から、月柱“基準固定”） ===== */
+function renderDaiunTable(pillars, gender, birthYear) {
+  const section = document.getElementById('daiunSection');
+  const tbody = document.querySelector('#daiunTable tbody');
+  if (!section || !tbody) { console.error('[大運] 要素未発見'); return; }
 
-        try {
-          const yearStem = pickStem(pillars.year);
-          const stemYinYang = YANG_STEMS.includes(yearStem) ? '陽' : '陰';
-          const isForward = (gender === 'male' && stemYinYang === '陽') ||
-                            (gender === 'female' && stemYinYang === '陰');
+  // 月数 → 「X歳Yカ月」表記（※「カ月」固定）
+  const fmtAge = (months) => {
+    const y = Math.floor(months / 12);
+    const m = months % 12;
+    return `${y}歳${m}カ月`;
+  };
 
-          const startAge = 10;
-          const monthBranch = pickBranch(pillars.month);
-          const monthStem = pickStem(pillars.month);
+  try {
+    // 順逆行（年干の陰陽 × 性別）
+    const yearStem = pickStem(pillars.year);
+    const stemYinYang = YANG_STEMS.includes(yearStem) ? '陽' : '陰';
+    const isForward = (gender === 'male' && stemYinYang === '陽') ||
+                      (gender === 'female' && stemYinYang === '陰');
 
-          const stems = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-          const branches = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+    // 基準は月柱
+    const monthStem   = pickStem(pillars.month);
+    const monthBranch = pickBranch(pillars.month);
 
-          const currentStemIdx = stems.indexOf(monthStem);
-          const currentBranchIdx = branches.indexOf(monthBranch);
-          tbody.innerHTML = '';
+    // 起点（干支インデックス）
+    const stems    = STEMS.slice();
+    const branches = BRANCHES.slice();
+    const currentStemIdx   = stems.indexOf(monthStem);
+    const currentBranchIdx = branches.indexOf(monthBranch);
 
-          for (let i = 0; i < 10; i++) {
-            const age = startAge + (i * 10);
-            const year = birthYear + age;
+    tbody.innerHTML = '';
 
-            const step = isForward ? i + 1 : -(i + 1);
-            const stemIdx = (currentStemIdx + step + 10) % 10;
-            const branchIdx = (currentBranchIdx + step + 12) % 12;
+    // 0〜99歳8カ月まで = 11行
+    for (let i = 0; i <= 10; i++) {
+      // 開始月：1行目だけ 0、以降は 9歳8カ月 → 19歳8カ月 …（= 116カ月、その後120カ月刻み）
+      const startMonths = (i === 0) ? 0 : (((i - 1) * 10 + 9) * 12 + 8);
+      // 干支の進み：0行目は0歩＝月柱
+      const step        = isForward ? i : -i;
 
-            const daiunStem = stems[stemIdx];
-            const daiunBranch = branches[branchIdx];
-            const daiunGanshi = daiunStem + daiunBranch;
+      const stemIdx   = (currentStemIdx   + step + 10) % 10;
+      const branchIdx = (currentBranchIdx + step + 12) % 12;
 
-            const tongbianStem = tenGodExact(dG, daiunStem);
-            const z = ZANG[daiunBranch];
-            const mainZanggan = z?.hon || '';
-            const tongbianBranch = mainZanggan ? tenGodExact(dG, mainZanggan) : '';
-            const juniunsei = stage12Of(dG, daiunBranch);
+      const daiunStem   = stems[stemIdx];
+      const daiunBranch = branches[branchIdx];
+      const daiunGanshi = daiunStem + daiunBranch;
 
-            const relations = [];
-            [
-              {key: 'year', label: '年'},
-              {key: 'month', label: '月'},
-              {key: 'day', label: '日'},
-              {key: 'time', label: '時'}
-            ].forEach(({key, label}) => {
-              const pBranch = pickBranch(pillars[key]);
-              if (CHONG.some(([a,b]) => (a===daiunBranch&&b===pBranch)||(a===pBranch&&b===daiunBranch))) {
-                relations.push(`${label}支と冲`);
-              }
-            });
+      // 月干を基準に評価
+      const tgStem   = tenGodExact(monthStem, daiunStem) || '—';
+      const zang     = ZANG[daiunBranch];
+      const mainZG   = zang && zang.hon ? zang.hon : '';
+      const tgBranch = mainZG ? (tenGodExact(monthStem, mainZG) || '—') : '—';
+      const junii    = stage12Of(monthStem, daiunBranch) || '—';
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${age}〜${age+9}歳<br><span class="muted">(${year}〜${year+9})</span></td>
-              <td><strong>${daiunGanshi}</strong></td>
-              <td>天干: ${tongbianStem || '—'}<br>地支: ${tongbianBranch || '—'}</td>
-              <td>${juniunsei || '—'}</td>
-              <td>${relations.length > 0 ? relations.join('<br>') : '—'}</td>`;
-            tbody.appendChild(tr);
-          }
-
-          section.style.display = 'block';
-        } catch (err) {
-          console.error('大運表の描画エラー:', err);
+      // 命式4支との冲
+      const pairList = [
+        { key: 'time',  label: '時' },
+        { key: 'day',   label: '日' },
+        { key: 'month', label: '月' },
+        { key: 'year',  label: '年' }
+      ];
+      const relations = [];
+      pairList.forEach(({ key, label }) => {
+        const pBranch = pickBranch(pillars[key]);
+        if (CHONG.some(([a, b]) => (a === daiunBranch && b === pBranch) || (a === pBranch && b === daiunBranch))) {
+          relations.push(label + '支と冲');
         }
-      }
+      });
 
-      // 大運表を描画
-      const birthYear = parseInt(q.get('year')) || Y;
-      const gender = q.get('gender') || 'male';
-      renderDaiunTable(pillars, gender, birthYear);
+// --- DEBUG: この行が「開始年齢の干支」を使っているか可視化 ---
+console.log(
+  `[DAIUN DEBUG] i=${i} 開始=${fmtAge(startMonths)} step=${step} ` +
+  `干支=${daiunGanshi} 天干TG=${tgStem} 地支TG=${tgBranch} 十二運=${junii}`
+);
+
+      const startAgeLabel = fmtAge(startMonths) + '〜';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${startAgeLabel}</td>
+        <td><strong>${daiunGanshi}</strong></td>
+        <td>天干: ${tgStem}<br>地支: ${tgBranch}</td>
+        <td>${junii}</td>
+        <td>${relations.length > 0 ? relations.join('<br>') : '—'}</td>
+      `;
+      tbody.appendChild(tr);
+
+      // デバッグ
+      console.log(`[大運] i=${i} start=${startAgeLabel} daiun=${daiunGanshi} step=${step}`);
     }
 
-    // 命式表の要素が存在するか確認してから描画
+    section.style.display = 'block';
+    console.log('[大運] 描画完了（0歳0カ月→9歳8カ月→以後10年刻み、全11行）');
+  } catch (err) {
+    console.error('[大運] 描画エラー:', err);
+  }
+}
+
+
+      const birthYear = Number((date||'').slice(0,4)) || Y;
+      renderDaiunTable(pillars, gender, birthYear);
+
+// 年運の開始年・行数（URLパラメータで上書き可）
+const lnStartYear = Number(rawLnStart) || birthYear; // 既定は出生年
+const lnYears     = Number(rawLnYears) || 50;        // 既定は50年分
+renderLiunianTable(pillars, gender, birthYear, { startYear: lnStartYear, years: lnYears });
+
+    }
+
+/* ===== 年運（流年）テーブル ===== */
+function renderLiunianTable(pillars, gender, birthYear, options = {}) {
+  const section = document.getElementById('liunianSection');
+  const tbody   = document.querySelector('#liunianTable tbody');
+  if (!section || !tbody) { console.error('[年運] 要素未発見'); return; }
+
+  // オプション
+  const startYear = Number(options.startYear) || birthYear;   // 既定：出生年から
+  const years     = Math.max(1, Math.min(120, Number(options.years) || 10)); // 既定：10年分
+
+  // 基準：月干・月支
+  const monthStem   = pickStem(pillars.month);
+  const monthBranch = pickBranch(pillars.month);
+
+  // 出生年の干支 → 以後+1年ずつローテーション
+  const birthGZ   = (pillars.year?.chinese || '').trim();
+  const birthIdx  = JIAZI.indexOf(birthGZ);
+  if (birthIdx < 0) { console.warn('[年運] 出生年の干支が60干支表に見つからない:', birthGZ); }
+
+  // 命式4支（関係判定に使用）
+  const natalBranches = {
+    time:  pickBranch(pillars.time),
+    day:   pickBranch(pillars.day),
+    month: pickBranch(pillars.month),
+    year:  pickBranch(pillars.year)
+  };
+  const relLabels = { time:'時', day:'日', month:'月', year:'年' };
+
+  // 年齢は「その西暦 − 出生年」
+  tbody.innerHTML = '';
+
+  for (let i = 0; i < years; i++) {
+    const y = startYear + i;
+    const age = y - birthYear;
+
+    // 出生年からの経過年数
+    const delta = y - birthYear;
+    // 干支（出生GZを起点に delta 年進める）
+    let gz, stem, branch;
+    if (birthIdx >= 0) {
+      gz     = JIAZI[(birthIdx + delta) % 60];
+      stem   = gz?.charAt(0) || '';
+      branch = gz?.charAt(1) || '';
+    } else {
+      // フォールバック：五黄中宮年など外部計算に頼らず、現在の pillars.year を基準に +delta
+      const base = (pillars.year?.chinese || '').trim();
+      const idx2 = JIAZI.indexOf(base);
+      gz     = idx2 >= 0 ? JIAZI[(idx2 + delta) % 60] : '';
+      stem   = gz?.charAt(0) || '';
+      branch = gz?.charAt(1) || '';
+    }
+
+    // 通変星（天干：月干→年干、地支：月干→年支の本気蔵干）
+    const tgStem = tenGodExact(monthStem, stem) || '—';
+    const zang   = ZANG[branch];
+    const mainZG = zang && zang.hon ? zang.hon : '';
+    const tgBr   = mainZG ? (tenGodExact(monthStem, mainZG) || '—') : '—';
+
+    // 十二運星（基準＝月干、対象＝年支）
+    const stage  = stage12Of(monthStem, branch) || '—';
+
+    // 命式4支との「冲」を簡易表示
+    const relations = [];
+    Object.entries(natalBranches).forEach(([k, nb]) => {
+      if (!nb) return;
+      if (CHONG.some(([a,b]) => (a===branch && b===nb) || (a===nb && b===branch))) {
+        relations.push(`${relLabels[k]}支と冲`);
+      }
+    });
+
+    // 行を追加
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="border:1px solid #999;padding:8px 10px">${y}</td>
+      <td style="border:1px solid #999;padding:8px 10px">${age}歳</td>
+      <td style="border:1px solid #999;padding:8px 10px"><strong>${stem}${branch}</strong></td>
+      <td style="border:1px solid #999;padding:8px 10px">天干: ${tgStem}<br>地支: ${tgBr}</td>
+      <td style="border:1px solid #999;padding:8px 10px">${stage}</td>
+      <td style="border:1px solid #999;padding:8px 10px">${relations.length ? relations.join('<br>') : '—'}</td>
+    `;
+    tbody.appendChild(tr);
+
+    // デバッグ
+    console.log(`[年運] y=${y} age=${age} gz=${stem}${branch} tg=${tgStem}/${tgBr} stage=${stage}`);
+  }
+
+  section.style.display = 'block';
+  console.log('[年運] 描画完了: startYear=%d years=%d', startYear, years);
+}
+
     const hasClassicTable = document.getElementById('c_time_gz');
     if (hasClassicTable) {
       const ready = await waitForId('c_time_gz');
       if (ready) {
         renderClassic();
         console.log('[CLASSIC] 命式表描画完了');
+      } else {
+        console.error('[CLASSIC] タイムアウト');
       }
     }
 
