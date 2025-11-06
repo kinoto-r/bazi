@@ -1,29 +1,4 @@
 /* ===================== 2) ベース定義 ===================== */
-const stemElement={'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
-const branchElement = {
-  '子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火',
-  '午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水'
-};
-const stemEl = s => stemElement[s] || '';
-const gen={'木':'火','火':'土','土':'金','金':'水','水':'木'};
-const COUNTER={'木':'土','火':'金','土':'水','金':'木','水':'火'};
-
-const ZANG={
-  "子":{"hon":"癸","mid":null,"rem":"壬"},
-  "丑":{"hon":"己","mid":"辛","rem":"癸"},
-  "寅":{"hon":"甲","mid":"丙","rem":"戊"},
-  "卯":{"hon":"乙","mid":null,"rem":"甲"},
-  "辰":{"hon":"戊","mid":"癸","rem":"乙"},
-  "巳":{"hon":"丙","mid":"庚","rem":"戊"},
-  "午":{"hon":"丁","mid":null,"rem":"己"},
-  "未":{"hon":"己","mid":"乙","rem":"丁"},
-  "申":{"hon":"庚","mid":"壬","rem":"戊"},
-  "酉":{"hon":"辛","mid":null,"rem":"庚"},
-  "戌":{"hon":"戊","mid":"丁","rem":"辛"},
-  "亥":{"hon":"壬","mid":null,"rem":"甲"}
-};
-
-const BRANCH12 = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
 function normalizeBranch(b){
   if (!b) return b;
   const s = String(b).replace(/\s+/g,'');
@@ -597,7 +572,7 @@ console.log('[BALANCE] hosts:',
   const yyChartHost = $('yyChart');
   if (yyChartHost){
     while (yyChartHost.firstChild) yyChartHost.removeChild(yyChartHost.firstChild);
-renderYinYangPie(yyChartHost, yy.陰, yy.陽, { size: 260 });   // ★ レーダーと同サイズ
+rrenderYinYangPie(yyChartHost, yy.陰, yy.陽);   // ← 第4引数を消す// ★ レーダーと同サイズ
 
   }
 
