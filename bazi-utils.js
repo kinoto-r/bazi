@@ -50,7 +50,17 @@ function makeBadge(text, toneOrClasses = null){
   }
   return sp;
 }
+// 干支から天干1文字を取る
+function pickStem(pillar) {
+  if (!pillar || !pillar.chinese) return '';
+  return pillar.chinese.charAt(0);
+}
 
+// 干支から地支1文字を取る
+function pickBranch(pillar) {
+  if (!pillar || !pillar.chinese) return '';
+  return pillar.chinese.charAt(1);
+}
 // URLのパラメータを安全に取るやつ
 function safeParseParams() {
   const params = {};

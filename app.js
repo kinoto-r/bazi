@@ -138,8 +138,6 @@ function judgeChoko(monthBranch, energy){
   return {season, need, text:`季節=${season}（月支：${normalizeBranch(monthBranch)}） 推奨=${need.join('・')||'—'} → ` + (lack.length? `不足：${lack.join('・')}` : `概ね充足`)};
 }
 
-const STEMS   = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-const BRANCHES= ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
 const JIAZI   = Array.from({length:60}, (_,i)=> STEMS[i%10] + BRANCHES[i%12]);
 const KONGWANG_PAIRS = [ ['戌','亥'], ['申','酉'], ['午','未'], ['辰','巳'], ['寅','卯'], ['子','丑'] ];
 const BRANCH_EMOJI = { 子:'🐭', 丑:'🐮', 寅:'🐯', 卯:'🐰', 辰:'🐲', 巳:'🐍', 午:'🐴', 未:'🐑', 申:'🐵', 酉:'🐔', 戌:'🐶', 亥:'🐷' };
