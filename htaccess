@@ -1,0 +1,32 @@
+Options -Multiviews
+RewriteEngine Off
+AddType application/javascript .js .mjs
+AddCharset UTF-8 .js .mjs
+
+# ??????1?, immutable?
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType application/json "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "\.(json|js|mjs)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+# ???Brotli?????Gzip?
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS application/json application/javascript text/javascript text/plain
+</IfModule>
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE application/json application/javascript text/javascript text/plain
+</IfModule>
+
+# ???MIME??????
+AddType application/javascript .js .mjs
+AddCharset UTF-8 .js .mjs .json
+Options -Multiviews
+RewriteEngine Off
+
