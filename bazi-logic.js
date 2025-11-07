@@ -1,11 +1,3 @@
-function normalizeBranch(b){
-  if (!b) return b;
-  const s = String(b).replace(/\s+/g,'');
-  if (BRANCH12.includes(s)) return s;
-  for (const zhi of BRANCH12){ if (s.includes(zhi)) return zhi; }
-  return b;
-}
-
 function kyuseiSimpleByYear(year){
   const n = (11 - (year % 9));
   const idx = ((n - 1 + 9) % 9) + 1;
@@ -105,13 +97,7 @@ function kongwangPairByGanzhi(gz){
   return KONGWANG_PAIRS[decade];
 }
 
-function renderKuboBlock(label, pair){
-  const div = document.createElement('div');
-  if (!pair){ div.textContent = `${label}：判定不可`; return div; }
-  const [a,b] = pair;
-  div.textContent = `${label}：${a}・${b}  ${BRANCH_EMOJI[a]||''} ${BRANCH_EMOJI[b]||''}`;
-  return div;
-}
+
 
 function isYang(stem){ return ['甲','丙','戊','庚','壬'].includes(stem); }
 

@@ -1,0 +1,3 @@
+- utils系をapp.jsから分離する
+- constantsはbazi-constants.jsに集約
+- 次：render系(レーダー、陰陽パイ)をbazi-render.jsへ？

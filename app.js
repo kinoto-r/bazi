@@ -1,26 +1,4 @@
 
-
-function paintTgCell(id){
-  const cell = document.getElementById(id);
-  if (!cell) return;
-  const label = (cell.textContent || '').trim();
-  if (!label || label === '　'){ return; }
-  const parts = splitTgLabel(label);
-  if (!parts.length) return;
-  const frag = document.createDocumentFragment();
-  frag.appendChild(document.createTextNode(label + ' '));
-  parts.forEach((name, idx) => {
-    const meta = TEN_GOD_META[name];
-    if (!meta) return;
-    if (idx>0) frag.appendChild(document.createTextNode(' '));
-    frag.appendChild( makeBadge(meta.yy, [meta.yy==='陽' ? 'yang' : 'yin']) );
-    frag.appendChild(document.createTextNode(' '));
-    frag.appendChild( makeBadge(meta.el) );
-  });
-  cell.innerHTML = '';
-  cell.appendChild(frag);
-}
-
 /* ===================== 4) 実行部 IIFE Start ===================== */
 (async function main(){
   try {
@@ -279,39 +257,18 @@ console.log('[BALANCE] hosts:',
   [yG, mG, dG, hG].forEach(s => { const el = stemElement[s]; if (el) cnt[el] += 1; });
   [yB, mB, dB, hB].forEach(b => { const el = branchElement[b]; if (el) cnt[el] += 1; });
 
-  // ===== 左カラム：五行表＋レーダー =====
-  const energyHost = $('energy');
-  if (energyHost){
-    while (energyHost.firstChild) energyHost.removeChild(energyHost.firstChild);
-    const row = order.map(k => cnt[k]);
-    energyHost.appendChild( createTable(order, [row]) );
-  }
-  const radarHost = $('fiveRadar');
-  if (radarHost){
-    while (radarHost.firstChild) radarHost.removeChild(radarHost.firstChild);
-    radarHost.appendChild( makeFiveRadarSVG(cnt, {size:260, max:8}) );
-  }
-
-  // 保存（他ロジックで利用）
-  window.__fiveCounts = cnt;
-
   // ===== 右カラム：陰陽表＋円グラフ =====
   const yy = { 陽:0, 陰:0 };
   [yG, mG, dG, hG].forEach(s => { if (s) yy[ yinYangOfStem(s) ]++; });
   [yB, mB, dB, hB].forEach(b => { if (b) yy[ yinYangOfBranch(b) ]++; });
+
+    // 保存（他ロジックで利用）
+  window.__fiveCounts = cnt;
   window.__yyCounts = yy;
 
-  const yyWrap = $('yyWrap');
-  if (yyWrap){
-    while (yyWrap.firstChild) yyWrap.removeChild(yyWrap.firstChild);
-    yyWrap.appendChild( createTable(['陽','陰'], [[yy.陽, yy.陰]]) );
-  }
-  const yyChartHost = $('yyChart');
-  if (yyChartHost){
-    while (yyChartHost.firstChild) yyChartHost.removeChild(yyChartHost.firstChild);
-renderYinYangPie(yyChartHost, yy.陰, yy.陽);   // ← 第4引数を消す// ★ レーダーと同サイズ
-
-  }
+  
+// ここで描画関数を呼ぶだけにする
+renderFiveBalanceSection(cnt, yy);
 
   // （任意）既存の「身強弱」「格局」をこの下に並べたい場合は、ここでappendChildすればOK
 })();
