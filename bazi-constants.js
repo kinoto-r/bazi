@@ -86,14 +86,39 @@ const GUARDIAN_DEFAULT_STEM = {
   木:'甲', 火:'丙', 土:'戊', 金:'庚', 水:'癸'
 };
 
-// 九星簡易計算（節分判定はここではしないバージョン）
-function kyuseiSimpleByYear(year) {
-  if (!year) return '—';
-  // 西暦の下2桁を使うのが一般的
-  const yy = year % 100;
-  // よく使われる式：11 - ((下2桁 + 9) % 9)
-  let n = 11 - ((yy + 9) % 9);
-  if (n === 0) n = 9; // 0になったら九紫
+// 九星簡易計算（節分まではざっくり対応・年だけで見る版）
+// 例）1979 → 三碧木星, 1989 → 二黒土星, 2000 → 九紫火星
+function kyuseiSimpleByYear(yearLike) {
+  if (!yearLike) return '—';
+
+  // 文字列でも数値でもOKにする
+  let y;
+  let m = null;
+  let d = null;
+
+  if (typeof yearLike === 'string' && yearLike.includes('-')) {
+    // "1979-01-28" みたいなの
+    const parts = yearLike.split('-');
+    y = parseInt(parts[0], 10);
+    m = parseInt(parts[1] || '0', 10);
+    d = parseInt(parts[2] || '0', 10);
+  } else {
+    y = parseInt(yearLike, 10);
+  }
+
+  if (!y) return '—';
+
+  // 節分ざっくり対応：2/4より前なら前年扱い
+  if (m !== null && d !== null) {
+    if (m < 2 || (m === 2 && d < 4)) {
+      y = y - 1;
+    }
+  }
+
+  // このロジックなら 1979 → 三碧 になります
+  const n = 11 - (y % 9);
+  const idx = ((n - 1 + 9) % 9) + 1;  // 1〜9に正規化
+
   const names = {
     1:'一白水星',
     2:'二黒土星',
@@ -105,8 +130,11 @@ function kyuseiSimpleByYear(year) {
     8:'八白土星',
     9:'九紫火星'
   };
-  return names[n] || '—';
+
+  return names[idx] || '—';
 }
+
+
 
 
 // 十神ラベル分割（定義のみここに残す）

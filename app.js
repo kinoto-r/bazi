@@ -1,12 +1,9 @@
 // app.js
 // =====================================
 // 四柱推命 結果ページ 初期化
-// ・あるものだけ表示する
-// ・無い機能は黙ってスキップする
-// ・コンソールには全部ログを残す
 // =====================================
 (function () {
-  // 最低限これだけはないと何もできない
+  // この4つがなければ何もできない
   const required = ['setText', 'safeParseParams', 'pickStem', 'pickBranch'];
   const missing = required.filter(n => typeof globalThis[n] === 'undefined');
 
@@ -25,106 +22,140 @@
   // =====================================
   // メイン初期化
   // =====================================
-  function initSampleView() {
-  // ▼ 1) とりあえず固定の命式（ここは今のままでもOK）
-  const pillars = {
-    year:  { chinese: '己未' },
-    month: { chinese: '己巳' },
-    day:   { chinese: '乙亥' },
-    time:  { chinese: '丁丑' }
-  };
+  function initPage() {
+    // 1) とりあえず固定の干支（ここは実際は別ファイルで計算する）
+    const pillars = {
+      year:  { chinese: '己未' },
+      month: { chinese: '己巳' },
+      day:   { chinese: '乙亥' },
+      time:  { chinese: '丁丑' }
+    };
 
-  // ▼ 2) URLから値を拾う
-  let params = {};
-  try {
-    params = safeParseParams();
-    console.log('[BOOT] URL params =', params);
-  } catch (e) {
-    console.warn('[BOOT] URL params 読み込み失敗', e);
-  }
-
-  // birth, birthday, y, year のどれかに入っている想定
-  // 例: ?birth=1989-06-07  または ?year=1989
-  let birthYear = 1989;
-  if (params.birth) {
-    // "1989-06-07" みたいなのを想定
-    const y = String(params.birth).split('-')[0];
-    if (y && !isNaN(+y)) birthYear = +y;
-  } else if (params.birthday) {
-    const y = String(params.birthday).split('-')[0];
-    if (y && !isNaN(+y)) birthYear = +y;
-  } else if (params.year) {
-    if (!isNaN(+params.year)) birthYear = +params.year;
-  } else if (params.y) {
-    if (!isNaN(+params.y)) birthYear = +params.y;
-  }
-
-  // 性別（大運の順逆に効くやつ）
-  // ?gender=male / ?gender=female で渡すようにする
-  const gender = (params.gender === 'male' || params.gender === 'female')
-    ? params.gender
-    : 'female'; // デフォルト
-
-  // ▼ 3) 干支を分解（ここは元のまま）
-  const stems = {
-    yG: pickStem(pillars.year),
-    mG: pickStem(pillars.month),
-    dG: pickStem(pillars.day),
-    hG: pickStem(pillars.time),
-  };
-  const branches = {
-    yB: pickBranch(pillars.year),
-    mB: pickBranch(pillars.month),
-    dB: pickBranch(pillars.day),
-    hB: pickBranch(pillars.time),
-  };
-
-  // ▼ 4) 命式テーブル
-  if (typeof renderClassicTable === 'function') {
+    // 2) URLパラメータから生年・性別を拾う
+    let params = {};
     try {
-      renderClassicTable(pillars, stems.dG, stems, branches);
+      params = safeParseParams();
+      console.log('[BOOT] URL params =', params);
     } catch (e) {
-      console.error('[BOOT] renderClassicTable でエラー', e);
+      console.warn('[BOOT] URL params 読み込み失敗', e);
     }
+
+    // 生年を決める（?birth=1979-05-10 / ?birthday=... / ?year=1979 / ?y=1979 のどれか）
+    let birthYear = 1989;
+    if (params.birth) {
+      const y = String(params.birth).split('-')[0];
+      if (!isNaN(+y)) birthYear = +y;
+    } else if (params.birthday) {
+      const y = String(params.birthday).split('-')[0];
+      if (!isNaN(+y)) birthYear = +y;
+    } else if (params.year) {
+      if (!isNaN(+params.year)) birthYear = +params.year;
+    } else if (params.y) {
+      if (!isNaN(+params.y)) birthYear = +params.y;
+    }
+
+    // 性別（大運の順逆に使う）
+    const gender = (params.gender === 'male' || params.gender === 'female')
+      ? params.gender
+      : 'female';
+
+    // 3) 干支を分解
+    const stems = {
+      yG: pickStem(pillars.year),
+      mG: pickStem(pillars.month),
+      dG: pickStem(pillars.day),
+      hG: pickStem(pillars.time),
+    };
+    const branches = {
+      yB: pickBranch(pillars.year),
+      mB: pickBranch(pillars.month),
+      dB: pickBranch(pillars.day),
+      hB: pickBranch(pillars.time),
+    };
+
+    // 4) 命式テーブル描画
+    try {
+      if (typeof renderClassicTable === 'function') {
+        renderClassicTable(pillars, stems.dG, stems, branches);
+        console.log('[BOOT] 命式テーブル描画OK');
+      }
+    } catch (e) {
+      console.error('[BOOT] 命式テーブル描画でエラー', e);
+    }
+
+    // 5) 五行・陰陽
+    let fiveCounts = { 木:0, 火:0, 土:0, 金:0, 水:0 };
+    let yyCounts   = { 陽:0, 陰:0 };
+    try {
+      fiveCounts = buildFiveCounts(stems, branches);
+      yyCounts   = buildYinYangCounts(stems, branches);
+      if (typeof renderFiveBalanceSection === 'function') {
+        renderFiveBalanceSection(fiveCounts, yyCounts);
+      }
+      console.log('[BOOT] 五行・陰陽OK', fiveCounts, yyCounts);
+    } catch (e) {
+      console.warn('[BOOT] 五行/陰陽の描画でエラー（続行します）', e);
+    }
+
+    // 6) 身強弱・格局・用神
+    try {
+      drawStrengthKakkyokuYojin(stems, branches, fiveCounts);
+    } catch (e) {
+      console.warn('[BOOT] 身強弱・格局でエラー（続行します）', e);
+    }
+
+    // ★ 互換用：以前の名前で呼ばれても動くようにしておく
+    // （いまは使ってないけど、他のファイルから呼ばれても死なないようにする）
+    globalThis.drawStrengthAndKakkyoku = function (s, b, fc) {
+      drawStrengthKakkyokuYojin(s, b, fc);
+    };
+
+    // 7) 蔵干代表
+    try {
+      drawZangRepresentative(stems, branches);
+    } catch (e) {
+      console.warn('[BOOT] 蔵干代表でエラー（続行します）', e);
+    }
+
+    // 8) 十二運
+    try {
+      drawStage12(stems.dG, branches);
+    } catch (e) {
+      console.warn('[BOOT] 十二運でエラー（続行します）', e);
+    }
+
+    // 9) 九星（いまは年で見る。節分対応は bazi-constants.js 側の関数に入っている前提）
+    try {
+      if (typeof kyuseiSimpleByYear === 'function') {
+        const ky = kyuseiSimpleByYear(params.birth || birthYear);
+        setTextIf('c_kyusei', ky);
+      }
+    } catch (e) {
+      console.warn('[BOOT] 九星でエラー（続行します）', e);
+    }
+
+    // 10) 成敗ロジック（天剋地冲・守護神ふくむ、あるものだけ出す）
+    try {
+      drawLogicBlocks(pillars, stems, branches, fiveCounts);
+    } catch (e) {
+      console.warn('[BOOT] 成敗ロジックでエラー（続行します）', e);
+    }
+
+    // 11) 大運・年運（性別と生年を渡すようにした）
+    try {
+      if (typeof renderDaiunTable === 'function') {
+        renderDaiunTable(pillars, gender, birthYear);
+      }
+      if (typeof renderLiunianTable === 'function') {
+        renderLiunianTable(pillars, gender, birthYear, { startYear: 2025, years: 10 });
+      }
+    } catch (e) {
+      console.warn('[BOOT] 大運/年運でエラー（続行します）', e);
+    }
+
+    const diag = document.getElementById('diag');
+    if (diag) diag.textContent = '表示完了';
   }
-
-  // ▼ 5) 五行・陰陽
-  const fiveCounts = buildFiveCounts(stems, branches);
-  const yyCounts   = buildYinYangCounts(stems, branches);
-  renderFiveBalanceSection(fiveCounts, yyCounts);
-
-  // ▼ 6) 身強弱・格局・喜神
-  drawStrengthAndKakkyoku(stems, branches, fiveCounts);
-
-  // ▼ 7) 蔵干代表
-  drawZangRep(stems, branches);
-
-  // ▼ 8) 十二運
-  drawStage12(stems.dG, branches);
-
-  // ▼ 9) 九星 ←ここでさっき直した関数を使う
-  try {
-    const ky = kyuseiSimpleByYear(birthYear);
-    setTextIf('c_kyusei', ky);
-  } catch (e) {
-    console.error('[BOOT] 九星でエラー', e);
-  }
-
-  // ▼ 10) 成敗ロジック
-  drawLogicBoxes(pillars);
-
-  // ▼ 11) 大運・年運 ←ここに性別と生年を渡す
-  try {
-    renderDaiunTable(pillars, gender, birthYear);
-    renderLiunianTable(pillars, gender, birthYear, { startYear: 2025, years: 10 });
-  } catch (e) {
-    console.error('[BOOT] 大運・年運でエラー', e);
-  }
-
-  const diag = document.getElementById('diag');
-  if (diag) diag.textContent = '表示完了（パラメータ反映済み）';
-}
-
 
   // =====================================
   // 身強弱・格局・用神
@@ -147,38 +178,26 @@
 
     // 身強弱
     setTextIf('strength', `${strength.label}　${strength.detail}`);
-
     // 格局
     setTextIf('kakkyoku', `${kak.name}（${kak.basis}）`);
 
-    // 用神・喜神・忌神・仇神
-    const yjBox = document.getElementById('yojin');
-    if (yjBox) {
-      // HTML側を汚したくないのでここで整形して入れる
-      if (typeof YOJIN !== 'undefined') {
-        const yj = YOJIN[kak.name];
-        if (yj) {
-          const rows = [
-            { label: '用神', val: (yj['用神'] || []).join('・') || '—' },
-            { label: '喜神', val: (yj['喜神'] || []).join('・') || '—' },
-            { label: '忌神', val: (yj['忌神'] || []).join('・') || '—' },
-            { label: '仇神', val: (yj['仇神'] || []).join('・') || '—' },
-          ];
-          yjBox.innerHTML = rows.map(r => (
-            `<div style="display:flex;gap:.5rem;margin:.15rem 0;">
-               <span style="min-width:5.5rem;color:#555;">${r.label}</span>
-               <span>${r.val}</span>
-             </div>`
-          )).join('');
-        } else {
-          // 対応がないときは空にしておく（前の表示を消す）
-          yjBox.textContent = '';
-        }
-      } else {
-        yjBox.textContent = '';
+    // 用神（4行に分けて出すバージョン）
+    const yojinIDs = ['yojin_yong','yojin_xi','yojin_ji','yojin_chou'];
+    // 先にクリア
+    yojinIDs.forEach(id => setTextIf(id, ''));
+
+    if (typeof YOJIN !== 'undefined') {
+      const yj = YOJIN[kak.name];
+      if (yj) {
+        setTextIf('yojin_yong', (yj['用神'] || []).join('・') || '—');
+        setTextIf('yojin_xi',   (yj['喜神'] || []).join('・') || '—');
+        setTextIf('yojin_ji',   (yj['忌神'] || []).join('・') || '—');
+        setTextIf('yojin_chou', (yj['仇神'] || []).join('・') || '—');
       }
     }
   }
+
+   
 
   // =====================================
   // 蔵干代表
@@ -258,14 +277,14 @@
       if (box) box.textContent = ch && ch.text ? ch.text : '';
     }
 
-    // 天剋地冲… 定義がなければ「何も書かない」でおく（空欄維持）
+    // 天剋地冲（さっき bazi-logic.js に足した detectTkdc を呼ぶ）
     if (typeof detectTkdc === 'function') {
       const r = detectTkdc(pillars);
       const box = document.getElementById('tkdc');
       if (box) box.innerHTML = Array.isArray(r) ? r.join('<br>') : (r || '');
     }
 
-    // 守護神（調候優先）… 同じく定義があれば出す、なければ空欄のまま
+    // 守護神（調候優先）… bazi-logic.js に selectGuardian を足してあればここに出る
     if (typeof selectGuardian === 'function') {
       const g = selectGuardian(pillars, stems, branches, fiveCounts);
       const box = document.getElementById('guardian');
@@ -274,14 +293,13 @@
   }
 
   // =====================================
-  // ヘルパー群
+  // ヘルパー
   // =====================================
   function setTextIf(id, txt) {
     const el = document.getElementById(id);
     if (el) el.textContent = (txt ?? '');
   }
 
-  // 干支→五行
   function buildFiveCounts(stems, branches) {
     const cnt = { '木':0, '火':0, '土':0, '金':0, '水':0 };
     if (typeof stemElement === 'undefined' || typeof branchElement === 'undefined') {
@@ -298,16 +316,13 @@
     return cnt;
   }
 
-  // 干支→陰陽
   function buildYinYangCounts(stems, branches) {
     const yy = { '陽':0, '陰':0 };
-    // 干
     [stems.yG, stems.mG, stems.dG, stems.hG].forEach(g => {
       if (!g) return;
       const isYang = ['甲','丙','戊','庚','壬'].includes(g);
       yy[isYang ? '陽' : '陰'] += 1;
     });
-    // 支
     if (typeof BRANCH_YIN_YANG !== 'undefined') {
       [branches.yB, branches.mB, branches.dB, branches.hB].forEach(b => {
         if (!b) return;
@@ -317,4 +332,5 @@
     }
     return yy;
   }
+
 })();
