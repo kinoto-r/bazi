@@ -61,25 +61,9 @@ function safeParseParams() {
 /* ===================== 全角→半角変換 ===================== */
 function convertFullToHalf(str) {
   if (!str) return '';
-  return str.replace(/[Ā-Úa-z0-9]/g, s => 
+  return str.replace(/[\uFF01-\uFF5E]/g, s => 
     String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
-  ).replace(/:/g, ':')
-    .replace(/−/g, '-')
-    .replace(/___/g, '_')
-    .replace(/,/g, ',')
-    .replace(/./g, '.')
-    .replace(/&/g, '&')
-    .replace(/=/g, '=')
-    .replace(/ï¼Ÿ/g, '?')
-    .replace(/\//g, '/')
-    .replace(/+/g, '+')
-    .replace(/(/g, '(')
-    .replace(/)/g, ')')
-    .replace(/\[/g, '[')
-    .replace(/]/g, ']')
-    .replace(/{/g, '{')
-    .replace(/}/g, '}')
-    .replace(/\u3000/g, ' ');
+  ).replace(/\u3000/g, ' ');
 }
 
 /* ===================== 非同期待機ヘルパー ===================== */
