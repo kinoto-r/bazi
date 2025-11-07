@@ -1,5 +1,4 @@
-// bazi-utils.js
-// ===== ユーティリティ =====
+/* ===================== 1) ユーティリティ ===================== */
 const $ = id => document.getElementById(id);
 const setText = (id, txt) => { const n = $(id); if (n) n.textContent = (txt ?? ""); };
 
@@ -7,36 +6,36 @@ function createTable(headers, rows) {
   const tbl = document.createElement('table');
   const thead = document.createElement('thead');
   const trh = document.createElement('tr');
-  headers.forEach(h => {
-    const th = document.createElement('th');
-    th.textContent = h;
-    trh.appendChild(th);
-  });
+  headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; trh.appendChild(th); });
   thead.appendChild(trh);
   tbl.appendChild(thead);
-
   const tbody = document.createElement('tbody');
   rows.forEach(r => {
     const tr = document.createElement('tr');
-    r.forEach(c => {
-      const td = document.createElement('td');
-      td.textContent = (c == null ? '' : String(c));
-      tr.appendChild(td);
-    });
+    r.forEach(c => { const td = document.createElement('td'); td.textContent = (c == null ? '' : String(c)); tr.appendChild(td); });
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
   return tbl;
 }
 
-function createList(items) {
-  const ul = document.createElement('ul');
-  items.forEach(s => {
-    const li = document.createElement('li');
-    li.textContent = s;
-    ul.appendChild(li);
-  });
-  return ul;
+function createList(items) { 
+  const ul=document.createElement('ul'); 
+  items.forEach(s=>{ 
+    const li=document.createElement('li'); 
+    li.textContent=s; 
+    ul.appendChild(li); 
+  }); 
+  return ul; 
+}
+
+function badge(text){ 
+  const span=document.createElement('span'); 
+  span.textContent=text; 
+  span.style.border='1px solid #ddd'; 
+  span.style.borderRadius='999px'; 
+  span.style.padding='2px 8px'; 
+  return span; 
 }
 
 function makeBadge(text, toneOrClasses = null){
@@ -50,20 +49,14 @@ function makeBadge(text, toneOrClasses = null){
   }
   return sp;
 }
-// 干支から天干1文字を取る
-function pickStem(pillar) {
-  if (!pillar || !pillar.chinese) return '';
-  return pillar.chinese.charAt(0);
-}
 
-// 干支から地支1文字を取る
-function pickBranch(pillar) {
-  if (!pillar || !pillar.chinese) return '';
-  return pillar.chinese.charAt(1);
-}
-// URLのパラメータを安全に取るやつ
+const pickStem   = p => (p && p.chinese) ? p.chinese.charAt(0) : '';
+const pickBranch = p => (p && p.chinese) ? p.chinese.charAt(1) : '';
+
+/* ===================== パラメータ解析（403回避） ===================== */
 function safeParseParams() {
   const params = {};
+  
   const search = window.location.search;
   if (search) {
     const sp = new URLSearchParams(search);
@@ -71,56 +64,62 @@ function safeParseParams() {
       params[key] = value;
     });
   }
+  
   const hash = window.location.hash;
   if (hash && hash.length > 1) {
     const hashStr = hash.substring(1);
     const pairs = hashStr.split('&');
+    
     pairs.forEach(pair => {
       if (!pair) return;
       const eqIndex = pair.indexOf('=');
       if (eqIndex === -1) return;
+      
       let key = pair.substring(0, eqIndex);
       let value = pair.substring(eqIndex + 1);
+      
       key = convertFullToHalf(key);
       value = convertFullToHalf(value);
+      
       try {
         key = decodeURIComponent(key);
         value = decodeURIComponent(value);
       } catch (e) {}
+      
       if (!params[key]) {
         params[key] = value;
       }
     });
   }
+  
   return params;
 }
 
-// 全角→半角
 function convertFullToHalf(str) {
   if (!str) return '';
-  return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s =>
+  return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => 
     String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
   ).replace(/：/g, ':')
-   .replace(/－/g, '-')
-   .replace(/＿/g, '_')
-   .replace(/，/g, ',')
-   .replace(/．/g, '.')
-   .replace(/＆/g, '&')
-   .replace(/＝/g, '=')
-   .replace(/？/g, '?')
-   .replace(/／/g, '/')
-   .replace(/＋/g, '+')
-   .replace(/（/g, '(')
-   .replace(/）/g, ')')
-   .replace(/［/g, '[')
-   .replace(/］/g, ']')
-   .replace(/｛/g, '{')
-   .replace(/｝/g, '}')
-   .replace(/　/g, ' ');
+    .replace(/－/g, '-')
+    .replace(/＿/g, '_')
+    .replace(/，/g, ',')
+    .replace(/．/g, '.')
+    .replace(/＆/g, '&')
+    .replace(/＝/g, '=')
+    .replace(/？/g, '?')
+    .replace(/／/g, '/')
+    .replace(/＋/g, '+')
+    .replace(/（/g, '(')
+    .replace(/）/g, ')')
+    .replace(/［/g, '[')
+    .replace(/］/g, ']')
+    .replace(/｛/g, '{')
+    .replace(/｝/g, '}')
+    .replace(/　/g, ' ');
 }
 
-// 五行レーダー（もとのまま）
-function makeFiveRadarSVG(counts, opt={}) {
+/* ===================== 五行レーダー ===================== */
+function makeFiveRadarSVG(counts, opt={}){
   const order = ['木','火','土','金','水'];
   const size = opt.size || 260;
   const max  = opt.max  || 8;
@@ -132,11 +131,12 @@ function makeFiveRadarSVG(counts, opt={}) {
   svg.setAttribute('width',  size);
   svg.setAttribute('height', size);
   svg.style.display = 'block';
+  svg.style.marginTop = '8px';
 
-  // グリッド
   const gGrid = document.createElementNS(ns, 'g');
   gGrid.setAttribute('stroke', '#ddd');
   gGrid.setAttribute('fill', 'none');
+
   [1/3, 2/3, 1].forEach(f=>{
     const rr = r * f;
     const path = document.createElementNS(ns, 'path');
@@ -146,7 +146,6 @@ function makeFiveRadarSVG(counts, opt={}) {
   });
   svg.appendChild(gGrid);
 
-  // 軸
   const gAxis = document.createElementNS(ns, 'g');
   gAxis.setAttribute('stroke', '#ccc');
   gAxis.setAttribute('fill', '#666');
@@ -173,7 +172,6 @@ function makeFiveRadarSVG(counts, opt={}) {
   });
   svg.appendChild(gAxis);
 
-  // データ
   const pts = order.map((k,i)=>{
     const v = Math.max(0, Math.min(max, counts[k]||0));
     const rate = v / max;
@@ -210,20 +208,22 @@ function makeFiveRadarSVG(counts, opt={}) {
   }
 }
 
-// 陰陽パイ（サイズ指定版）
+/* ===================== 陰陽パイ ===================== */
 function renderYinYangPie(container, yin, yang, opt = {}) {
   const el = (typeof container === 'string') ? document.getElementById(container) : container;
   if (!el) return;
   while (el.firstChild) el.removeChild(el.firstChild);
 
-  const size = Number(opt.size) || 260;
+  const size = Number(opt.size) || 260;     // ★ レーダーと同じサイズにできる
   const W = size, H = size, CX = W/2, CY = H/2, R = Math.floor(size * 0.42);
+
   const total = (yin|0) + (yang|0);
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('width',  W);
   svg.setAttribute('height', H);
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.display = 'block';
 
   const arcPath = (cx, cy, r, startRad, endRad) => {
     const x0 = cx + r * Math.cos(startRad);
@@ -242,6 +242,7 @@ function renderYinYangPie(container, yin, yang, opt = {}) {
   }
 
   if (yin === total || yang === total) {
+    // 100% 片側ケース
     const c = document.createElementNS(ns, 'circle');
     c.setAttribute('cx', CX); c.setAttribute('cy', CY); c.setAttribute('r', R);
     c.setAttribute('fill', yin === total ? '#bdbdbd' : '#ffffff');
@@ -252,14 +253,15 @@ function renderYinYangPie(container, yin, yang, opt = {}) {
     const yangRad = (yang / total) * Math.PI * 2;
     const pathYang = document.createElementNS(ns, 'path');
     pathYang.setAttribute('d', arcPath(CX, CY, R, start, start + yangRad));
-    pathYang.setAttribute('fill', '#ffe8c6');
+    pathYang.setAttribute('fill', '#ffe8c6'); pathYang.setAttribute('stroke', '#fff'); pathYang.setAttribute('stroke-width', '0.5');
     svg.appendChild(pathYang);
     const pathYin = document.createElementNS(ns, 'path');
     pathYin.setAttribute('d', arcPath(CX, CY, R, start + yangRad, start + Math.PI*2));
-    pathYin.setAttribute('fill', '#e7e9ff');
+    pathYin.setAttribute('fill', '#e7e9ff'); pathYin.setAttribute('stroke', '#fff'); pathYin.setAttribute('stroke-width', '0.5');
     svg.appendChild(pathYin);
   }
 
+  // 中央ラベル
   const label = document.createElementNS(ns, 'text');
   label.setAttribute('x', CX); label.setAttribute('y', CY + 4);
   label.setAttribute('text-anchor', 'middle'); label.setAttribute('font-size', Math.round(size*0.07));
