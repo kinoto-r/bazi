@@ -23,8 +23,15 @@
     <p class="muted">※入力はブラウザだけで使用します（送信先は同一サイト内）。</p>
 
     <form action="./4PAstroresult.html" method="get" accept-charset="UTF-8">
-      <label for="date">生年月日</label>
-      <input id="date" name="date" type="date" required />
+      <label>生年月日:
+    <input type="date" name="birth" required>
+  </label>
+  <label>性別:
+    <select name="gender">
+      <option value="male">男性</option>
+      <option value="female" selected>女性</option>
+    </select>
+  </label>
 
       <label for="time">出生時刻</label>
       <input id="time" name="time" type="time" step="60" value="12:00" required />
@@ -43,7 +50,6 @@
         <option value="America/Los_Angeles">America/Los_Angeles</option>
         <option value="America/New_York">America/New_York</option>
       </select>
-
       <button type="submit">命式を作成する</button>
     </form>
 

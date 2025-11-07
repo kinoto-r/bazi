@@ -4,15 +4,22 @@
 // ========================
 
 /* ===================== DOM操作ヘルパー ===================== */
+// ★ ここで定義してすぐ globalThis に載せる
 const $ = id => document.getElementById(id);
+globalThis.$ = $;
+
 const setText = (id, txt) => {
   const n = $(id);
   if (n) n.textContent = (txt ?? "");
 };
+globalThis.setText = setText;
 
 /* ===================== 干支抽出ヘルパー ===================== */
 const pickStem = p => (p && p.chinese) ? p.chinese.charAt(0) : '';
+globalThis.pickStem = pickStem;
+
 const pickBranch = p => (p && p.chinese) ? p.chinese.charAt(1) : '';
+globalThis.pickBranch = pickBranch;
 
 /* ===================== URLパラメータ解析（403回避） ===================== */
 function safeParseParams() {
@@ -47,7 +54,9 @@ function safeParseParams() {
       try {
         key = decodeURIComponent(key);
         value = decodeURIComponent(value);
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[safeParseParams] decode失敗', e);
+      }
       
       if (!params[key]) {
         params[key] = value;
@@ -57,14 +66,19 @@ function safeParseParams() {
   
   return params;
 }
+// 関数宣言はそのままでもglobalに出るが、念のため明示
+globalThis.safeParseParams = safeParseParams;
 
 /* ===================== 全角→半角変換 ===================== */
 function convertFullToHalf(str) {
   if (!str) return '';
-  return str.replace(/[\uFF01-\uFF5E]/g, s => 
-    String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
-  ).replace(/\u3000/g, ' ');
+  return str
+    .replace(/[\uFF01-\uFF5E]/g, s =>
+      String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+    )
+    .replace(/\u3000/g, ' ');
 }
+globalThis.convertFullToHalf = convertFullToHalf;
 
 /* ===================== 非同期待機ヘルパー ===================== */
 function waitForId(id, tries = 40, intervalMs = 50) {
@@ -77,3 +91,7 @@ function waitForId(id, tries = 40, intervalMs = 50) {
     })();
   });
 }
+globalThis.waitForId = waitForId;
+
+// デバッグログ（読み込まれたことがわかるように）
+console.log('[bazi-utils] loaded and exported to globalThis');

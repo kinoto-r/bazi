@@ -158,6 +158,123 @@ function judgeChoko(monthBranch, energy) {
   };
 }
 
+/* ===================== 守護神（調候優先） ===================== */
+/**
+ * 調候で必要と言われた五行の中から、
+ * いま足りていないものを1～2個返す。
+ *
+ * @param {Object} pillars  {year:{chinese}, month:{...}, day:{...}, time:{...}}
+ * @param {Object} stems    {yG,mG,dG,hG}  ※今は使わないが将来拡張用
+ * @param {Object} branches {yB,mB,dB,hB}  ※今は使わないが将来拡張用
+ * @param {Object} energy   {木:数, 火:数, 土:数, 金:数, 水:数}
+ * @returns {{elements: string[], text: string}}
+ */
+function selectGuardian(pillars, stems, branches, energy) {
+  // 月支から季節を決める（調候は月支基準なので pillars.month を見る）
+  const monthBranch = pickBranch(pillars.month);
+  const choko = judgeChoko(monthBranch, energy); // {season, need, text}
+
+  // 調候が要求している五行の中で、今のエネルギーが不足しているものだけ拾う
+  // judgeChoko と同じ 0.8 を閾値にする
+  const lack = (choko.need || []).filter(el => {
+    const v = energy[el] || 0;
+    return v < 0.8;
+  });
+
+  let picked;
+  if (lack.length > 0) {
+    // 足りないものがあるときは、最大2つまで挙げる
+    picked = lack.slice(0, 2);
+  } else {
+    // 一応足りているときは、季節が要求したものの先頭だけ挙げる
+    picked = (choko.need || []).slice(0, 1);
+  }
+
+  return {
+    elements: picked,
+    text: picked.length
+      ? `調候優先：${picked.join('・')}`
+      : '調候上の不足は特にありません'
+  };
+}
+
+/* ===================== 天剋地冲の検出 ===================== */
+/**
+ * 4本の柱の中で「支が冲」かつ「干が相剋」しているものを列挙する
+ * @param {Object} p  {year:{chinese:..}, month:{...}, day:{...}, time:{...}}
+ * @returns {string[]} 例: ["年-日：天剋地冲（己未 × 乙亥）"]
+ */
+function detectTkdc(p) {
+  // 1. 4本の干支をばらす
+  const stems = [
+    pickStem(p.year),
+    pickStem(p.month),
+    pickStem(p.day),
+    pickStem(p.time)
+  ];
+  const branches = [
+    pickBranch(p.year),
+    pickBranch(p.month),
+    pickBranch(p.day),
+    pickBranch(p.time)
+  ];
+  const cols = ['年','月','日','時'];
+  const results = [];
+
+  // 2. 支が冲しているペアを探す
+  const isChongPair = (b1, b2) => {
+    if (!b1 || !b2) return false;
+    return CHONG.some(pair =>
+      (pair[0] === b1 && pair[1] === b2) ||
+      (pair[1] === b1 && pair[0] === b2)
+    );
+  };
+
+  // 3. 干が相剋しているかどうか（どちらかがどちらかを剋す）
+  const isStemKe = (s1, s2) => {
+    if (!s1 || !s2) return false;
+    const e1 = stemElement[s1];
+    const e2 = stemElement[s2];
+    if (!e1 || !e2) return false;
+    return (COUNTER[e1] === e2) || (COUNTER[e2] === e1);
+  };
+
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      const b1 = branches[i];
+      const b2 = branches[j];
+      if (!isChongPair(b1, b2)) continue;       // 地冲してないなら次
+
+      const s1 = stems[i];
+      const s2 = stems[j];
+      if (!isStemKe(s1, s2)) continue;          // 干が剋してないなら次
+
+      // ここまで来たら「天剋地冲」
+      // 元の干支をそのまま書いておくと見やすい
+      const gz1 = (pOrder(i, p) || '');
+      const gz2 = (pOrder(j, p) || '');
+      results.push(`${cols[i]}-${cols[j]}：天剋地冲（${gz1} × ${gz2}）`);
+    }
+  }
+
+  // 1件もなければ空配列
+  return results;
+}
+
+/**
+ * インデックスから元のpillarの干支文字列を取り出す小ヘルパー
+ * 0:年,1:月,2:日,3:時
+ */
+function pOrder(idx, p) {
+  switch (idx) {
+    case 0: return p.year && p.year.chinese;
+    case 1: return p.month && p.month.chinese;
+    case 2: return p.day && p.day.chinese;
+    case 3: return p.time && p.time.chinese;
+    default: return '';
+  }
+}
+
 /* ===================== 空亡判定 ===================== */
 function kongwangPairByGanzhi(gz) {
   if (!gz || gz.length < 2) return null;
@@ -239,7 +356,7 @@ function selectZangTenGod(dayStem, monthBranch, stemsByPos) {
   // 透出なしの場合、本気→中気→余気の順
   for (const layer of zangLayers) {
     const tg = tenGodExact(dayStem, layer.stem);
-    if (tg && tg !== '－') {
+    if (tg && tg !== ' ') {
       return {
         tg,
         basis: `${layer.label}「${layer.stem}」を採用（透干なし）`,
@@ -249,5 +366,5 @@ function selectZangTenGod(dayStem, monthBranch, stemsByPos) {
     }
   }
 
-  return { tg: '－', basis: '蔵干該当なし', zangKey: null, stem: null };
+  return { tg: ' ', basis: '蔵干該当なし', zangKey: null, stem: null };
 }
