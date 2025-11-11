@@ -141,17 +141,23 @@
       console.warn('[BOOT] 成敗ロジックでエラー（続行します）', e);
     }
 
-    // 11) 大運・年運（性別と生年を渡すようにした）
-    try {
-      if (typeof renderDaiunTable === 'function') {
-        renderDaiunTable(pillars, gender, birthYear);
-      }
-      if (typeof renderLiunianTable === 'function') {
-        renderLiunianTable(pillars, gender, birthYear, { startYear: 2025, years: 10 });
-      }
-    } catch (e) {
-      console.warn('[BOOT] 大運/年運でエラー（続行します）', e);
-    }
+    // 11) 大運・年運（性別・生年・生年月日を渡すようにした）
+try {
+  if (typeof renderDaiunTable === 'function') {
+    // URLパラメータから birth を渡す（なければ null）
+    renderDaiunTable(pillars, gender, birthYear, {
+      birth: params.birth || null
+    });
+  }
+  if (typeof renderLiunianTable === 'function') {
+    renderLiunianTable(pillars, gender, birthYear, {
+      startYear: 2025,
+      years: 10
+    });
+  }
+} catch (e) {
+  console.warn('[BOOT] 大運/年運でエラー（続行します）', e);
+}
 
     const diag = document.getElementById('diag');
     if (diag) diag.textContent = '表示完了';

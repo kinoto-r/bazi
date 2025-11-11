@@ -3,8 +3,33 @@
 // 大運・年運（流年）描画専用
 // ========================
 
-/* ===================== 大運表（0歳から、月柱基準固定） ===================== */
-function renderDaiunTable(pillars, gender, birthYear) {
+/**
+ * 起運(月数)を出すための器
+ * ここでは「ロジック未実装なら null を返す」だけにしておく
+ * あとで節入りとの差分→÷3→順逆で前後…をここに書けばOK。
+ *
+ * @param {string} birthStr  "1979-05-10" みたいな文字列想定
+ * @param {string} gender    "male" | "female"
+ * @param {string} stemYinYang "陽" | "陰"
+ * @returns {number|null} 起運までの月数（たとえば 9歳8カ月なら 116）or null
+ */
+function calcQiYunMonths(birthStr, gender, stemYinYang) {
+  // ★ここに本物のロジックを後で書く
+  // いまは「未実装」として null を返す
+  console.log('[QIYUN] 未実装: birth=%s gender=%s stemYinYang=%s', birthStr, gender, stemYinYang);
+  return null;
+}
+
+/* ===================== 大運表 ===================== */
+/**
+ * @param {Object} pillars  {year:{chinese}, month:{...}, day:{...}, time:{...}}
+ * @param {string} gender   "male" or "female"
+ * @param {number} birthYear 西暦
+ * @param {Object} [options]
+ *    - birth: "YYYY-MM-DD" を渡せるようにしておく
+ *    - firstStartMonths: 数字で渡せば起運をそれにする
+ */
+function renderDaiunTable(pillars, gender, birthYear, options) {
   const section = document.getElementById('daiunSection');
   const tbody = document.querySelector('#daiunTable tbody');
   if (!section || !tbody) {
@@ -38,13 +63,35 @@ function renderDaiunTable(pillars, gender, birthYear) {
 
     tbody.innerHTML = '';
 
-    // 0〜99歳8カ月まで = 11行
+    // ▼ ここが今回のポイント：起運を可変にする
+    let firstStartMonths = 116; // 従来どおり 9歳8カ月
+    if (options && typeof options.firstStartMonths === 'number') {
+      firstStartMonths = Math.max(0, Math.floor(options.firstStartMonths));
+    } else if (options && options.birth) {
+      // 生年月日と性別と年干陰陽がそろっていれば、ここで起運を計算して差し込む
+      const q = calcQiYunMonths(options.birth, gender, stemYinYang);
+      if (typeof q === 'number' && q >= 0) {
+        firstStartMonths = q;
+      }
+    }
+
+    // 0〜99歳台まで = 11行
     for (let i = 0; i <= 10; i++) {
-      // 開始月：1行目だけ 0、以降は 9歳8カ月 → 19歳8カ月 …（= 116カ月、その後120カ月刻み）
-      const startMonths = (i === 0) ? 0 : (((i - 1) * 10 + 9) * 12 + 8);
+      // 行ごとの開始月
+      // 1行目だけ 0、2行目は「起運の月」、以降は10年刻み
+      let startMonths;
+      if (i === 0) {
+        startMonths = 0;
+      } else if (i === 1) {
+        startMonths = firstStartMonths;
+      } else {
+        // 2行目以降は「(i-1) * 10年 + 起運の年齢」で刻む感じにする
+        // 120カ月 = 10年
+        startMonths = firstStartMonths + (i - 1) * 120;
+      }
+
       // 干支の進み：0行目は0歩＝月柱
       const step = isForward ? i : -i;
-
       const stemIdx = (currentStemIdx + step + 10) % 10;
       const branchIdx = (currentBranchIdx + step + 12) % 12;
 
@@ -54,55 +101,36 @@ function renderDaiunTable(pillars, gender, birthYear) {
 
       // 月干を基準に評価
       const tgStem = tenGodExact(monthStem, daiunStem) || '—';
-      const zang = ZANG[daiunBranch];
-      const mainZG = zang && zang.hon ? zang.hon : '';
-      const tgBranch = mainZG ? (tenGodExact(monthStem, mainZG) || '—') : '—';
-      const junii = stage12Of(monthStem, daiunBranch) || '—';
+      const tgBr = tenGodExact(monthStem, pickStem({ chinese: daiunBranch + '' })) || '—';
 
-      // 命式4支との冲
-      const pairList = [
-        { key: 'time', label: '時' },
-        { key: 'day', label: '日' },
-        { key: 'month', label: '月' },
-        { key: 'year', label: '年' }
-      ];
-      const relations = [];
-      pairList.forEach(({ key, label }) => {
-        const pBranch = pickBranch(pillars[key]);
-        if (CHONG.some(([a, b]) => (a === daiunBranch && b === pBranch) || (a === pBranch && b === daiunBranch))) {
-          relations.push(label + '支と冲');
-        }
-      });
-
-      console.log(
-        `[DAIUN DEBUG] i=${i} 開始=${fmtAge(startMonths)} step=${step} ` +
-        `干支=${daiunGanshi} 天干TG=${tgStem} 地支TG=${tgBranch} 十二運=${junii}`
-      );
-
-      const startAgeLabel = fmtAge(startMonths) + '〜';
+      // 十二運（「日干 vs 地支」でもいいがここでは月干ベースで）
+      const stage = stage12Of(monthStem, daiunBranch) || '—';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${startAgeLabel}</td>
+        <td>${fmtAge(startMonths)}</td>
         <td><strong>${daiunGanshi}</strong></td>
-        <td>天干: ${tgStem}<br>地支: ${tgBranch}</td>
-        <td>${junii}</td>
-        <td>${relations.length > 0 ? relations.join('<br>') : '—'}</td>
+        <td>${tgStem}</td>
+        <td>${stage}</td>
+        <td class="muted">—</td>
       `;
       tbody.appendChild(tr);
 
-      console.log(`[大運] i=${i} start=${startAgeLabel} daiun=${daiunGanshi} step=${step}`);
+      console.log('[DAIUN DEBUG] i=%d 開始=%s step=%d 干支=%s 天干TG=%s 地支TG=%s 十二運=%s',
+        i, fmtAge(startMonths), step, daiunGanshi, tgStem, tgBr, stage);
     }
 
     section.style.display = 'block';
-    console.log('[大運] 描画完了（0歳0カ月→9歳8カ月→以後10年刻み、全11行）');
-  } catch (err) {
-    console.error('[大運] 描画エラー:', err);
+    console.log('[大運] 描画完了（起運=%sカ月, 性別=%s, 順行=%s）',
+      firstStartMonths, gender, isForward ? '順' : '逆');
+
+  } catch (e) {
+    console.error('[大運] 描画でエラー', e);
   }
 }
 
-/* ===================== 年運（流年）テーブル ===================== */
-function renderLiunianTable(pillars, gender, birthYear, options = {}) {
+/* ===================== 年運表 ===================== */
+function renderLiunianTable(pillars, gender, birthYear, options) {
   const section = document.getElementById('liunianSection');
   const tbody = document.querySelector('#liunianTable tbody');
   if (!section || !tbody) {
@@ -118,21 +146,9 @@ function renderLiunianTable(pillars, gender, birthYear, options = {}) {
   const monthStem = pickStem(pillars.month);
   const monthBranch = pickBranch(pillars.month);
 
-  // 出生年の干支 → 以後+1年ずつローテーション
-  const birthGZ = (pillars.year?.chinese || '').trim();
-  const birthIdx = JIAZI.indexOf(birthGZ);
-  if (birthIdx < 0) {
-    console.warn('[年運] 出生年の干支が60干支表に見つからない:', birthGZ);
-  }
-
-  // 命式4支（関係判定に使用）
-  const natalBranches = {
-    time: pickBranch(pillars.time),
-    day: pickBranch(pillars.day),
-    month: pickBranch(pillars.month),
-    year: pickBranch(pillars.year)
-  };
-  const relLabels = { time:'時', day:'日', month:'月', year:'年' };
+  // 出生年の干支を起点にする
+  const birthGz = pillars.year.chinese;
+  const birthIdx = JIAZI.indexOf(birthGz);
 
   tbody.innerHTML = '';
 
@@ -149,33 +165,22 @@ function renderLiunianTable(pillars, gender, birthYear, options = {}) {
       stem = gz?.charAt(0) || '';
       branch = gz?.charAt(1) || '';
     } else {
-      // フォールバック：五黄中宮年など外部計算に頼らず、現在の pillars.year を基準に +delta
-      const base = (pillars.year?.chinese || '').trim();
-      const idx2 = JIAZI.indexOf(base);
-      gz = idx2 >= 0 ? JIAZI[(idx2 + delta) % 60] : '';
-      stem = gz?.charAt(0) || '';
-      branch = gz?.charAt(1) || '';
+      // 年柱の干支が取れなかった場合は十二支だけでも進める
+      branch = BRANCHES[(BRANCHES.indexOf(monthBranch) + delta) % 12];
+      stem = STEMS[(STEMS.indexOf(monthStem) + delta) % 10];
+      gz = stem + branch;
     }
 
-    // 通変星（天干：月干→年干、地支：月干→年支の本気蔵干）
+    // 通変星（天干・地支で2つ出す）
     const tgStem = tenGodExact(monthStem, stem) || '—';
-    const zang = ZANG[branch];
-    const mainZG = zang && zang.hon ? zang.hon : '';
-    const tgBr = mainZG ? (tenGodExact(monthStem, mainZG) || '—') : '—';
+    const tgBr = tenGodExact(monthStem, pickStem({ chinese: branch + '' })) || '—';
 
-    // 十二運星（基準：月干、対象：年支）
+    // 十二運
     const stage = stage12Of(monthStem, branch) || '—';
 
-    // 命式4支との「冲」を簡易表示
+    // 合・冲など（柱と年運の干支判定）…ここはあとで拡張
     const relations = [];
-    Object.entries(natalBranches).forEach(([k, nb]) => {
-      if (!nb) return;
-      if (CHONG.some(([a,b]) => (a === branch && b === nb) || (a === nb && b === branch))) {
-        relations.push(`${relLabels[k]}支と冲`);
-      }
-    });
 
-    // 行を追加
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="border:1px solid #999;padding:8px 10px">${y}</td>
