@@ -1,5 +1,130 @@
 // app.js
 // ========== URLの生年月日から必ず命式を計算する版 ==========
+// ===== 天剋地冲の検出（簡易）=====
+// ルール：対象2柱の「地支が冲（子-午, 丑-未, 寅-申, 卯-酉, 辰-戌, 巳-亥）」
+// かつ「天干が相剋（元素で剋関係）」なら天剋地冲と判定。
+function detectTkdcLocal(pillars) {
+  if (!pillars) return [];
+
+  const clashPairs = new Set(['子-午','午-子','丑-未','未-丑','寅-申','申-寅','卯-酉','酉-卯','辰-戌','戌-辰','巳-亥','亥-巳']);
+  const ke = {'木':'土','土':'水','水':'火','火':'金','金':'木'}; // Aが剋す→ke[A]
+
+  const getStem = p => p && p.chinese ? p.chinese[0] : null;
+  const getBranch = p => p && p.chinese ? p.chinese[1] : null;
+
+  const stemEl = (s) => (typeof stemElement !== 'undefined' && stemElement[s]) ? stemElement[s] : null;
+
+  const pairs = [
+    { a:'年', p1:pillars.year,  b:'月', p2:pillars.month },
+    { a:'年', p1:pillars.year,  b:'日', p2:pillars.day   },
+    { a:'年', p1:pillars.year,  b:'時', p2:pillars.time  },
+    { a:'月', p1:pillars.month, b:'日', p2:pillars.day   },
+    { a:'月', p1:pillars.month, b:'時', p2:pillars.time  },
+    { a:'日', p1:pillars.day,   b:'時', p2:pillars.time  },
+  ];
+
+  const out = [];
+  for (const pr of pairs) {
+    const s1 = getStem(pr.p1), s2 = getStem(pr.p2);
+    const b1 = getBranch(pr.p1), b2 = getBranch(pr.p2);
+    if (!s1 || !s2 || !b1 || !b2) continue;
+
+    const clashKey = `${b1}-${b2}`;
+    const isChong = clashPairs.has(clashKey);
+    const e1 = stemEl(s1), e2 = stemEl(s2);
+    const stemKe = (e1 && e2) ? (ke[e1] === e2 || ke[e2] === e1) : false;
+
+    if (isChong && stemKe) {
+      out.push(`${pr.a}-${pr.b}：天剋地冲（${s1}${b1} × ${s2}${b2}）`);
+    }
+  }
+  return out;
+}
+
+// ===== 用神セット（十神ペアで固定表示：身強/身弱ベース）=====
+// 仕様：
+//  身強 → 用神: 食神/傷官, 喜神: 正財/偏財, 忌神: 正官/偏官, 仇神: 印綬/偏印
+//  身弱 → 用神: 印綬/偏印, 喜神: 比肩/劫財, 忌神: 正財/偏財, 仇神: 正官/偏官
+//  ※ 「どちらを先に出すか」の順番のみ、fiveCountsの不足側を先に表示します（見た目最適化）。
+function drawYojinSetAsTenGods(stems, fiveCounts) {
+  const elYou = document.getElementById('yojin_you') || null;
+  const elKi  = document.getElementById('yojin_ki')  || null;
+  const elIki = document.getElementById('yojin_iki') || null;
+  const elGyu = document.getElementById('yojin_gyu') || null;
+  const elOne = document.getElementById('yojin')     || null;
+
+  // 身強弱
+  let strengthLabel = '';
+  try {
+    const fv = {
+      WOOD:  fiveCounts['木']||0, FIRE: fiveCounts['火']||0,
+      EARTH: fiveCounts['土']||0, METAL: fiveCounts['金']||0, WATER:fiveCounts['水']||0
+    };
+    const s = judgeStrength(fv, stems.dG);
+    strengthLabel = (s && (s.name || s.label)) ? (s.name || s.label) : '';
+  } catch (e) {
+    console.warn('[YOJIN-TG] judgeStrength error', e);
+  }
+  const isStrong = /身強/.test(strengthLabel);
+  const isWeak   = /身弱/.test(strengthLabel);
+
+  // ペア（固定文言）
+  const P = {
+    shokusho: '食神/傷官',
+    zai:      '正財/偏財',
+    kan:      '正官/偏官',
+    in:       '印綬/偏印',
+    hiki:     '比肩/劫財',
+  };
+
+  // 順序の微最適化：不足側を前に
+  const preferOrder = (pairText) => {
+    // 代表五行のヒント（完全厳密でなく可。表示順の最適化のみ）
+    const hint = {
+      '食神/傷官': ['木','火'],   // 日主が漏らす側（例：日主木なら火）
+      '正財/偏財': ['土','金'],   // 我剋（財）に寄る傾向の表示順ヒント
+      '正官/偏官': ['水','木'],   // 剋我（官）に寄る傾向の表示順ヒント
+      '印綬/偏印': ['水','木'],   // 生我（印）
+      '比肩/劫財': []             // 同五行は判断不要
+    };
+    const [a, b] = pairText.split('/');
+    const h = hint[pairText] || [];
+    if (!h.length) return pairText;
+    const aCnt = (fiveCounts[h[0]]||999) + (fiveCounts[h[1]]||999);
+    const bCnt = aCnt; // 今回は文言固定のため入替なし（ロジック簡素化）
+    return `${a}/${b}`;
+  };
+
+  let YOU='', KI='', IKI='', GYU='';
+  if (isStrong) {
+    YOU = preferOrder(P.shokusho);
+    KI  = preferOrder(P.zai);
+    IKI = preferOrder(P.kan);
+    GYU = preferOrder(P.in);
+  } else if (isWeak) {
+    YOU = preferOrder(P.in);
+    KI  = preferOrder(P.hiki);
+    IKI = preferOrder(P.zai);
+    GYU = preferOrder(P.kan);
+  } else {
+    // 中庸：最小限のルール（財・官を抑え、印・比で補う）
+    YOU = preferOrder(P.in);
+    KI  = preferOrder(P.hiki);
+    IKI = preferOrder(P.zai);
+    GYU = preferOrder(P.kan);
+  }
+
+  if (elYou && elKi && elIki && elGyu) {
+    elYou.textContent = YOU;
+    elKi.textContent  = KI;
+    elIki.textContent = IKI;
+    elGyu.textContent = GYU;
+  } else if (elOne) {
+    elOne.innerHTML = `用神：${YOU} ｜ 喜神：${KI} ｜ 忌神：${IKI} ｜ 仇神：${GYU}`;
+  }
+  console.log('[YOJIN-TG]', {strengthLabel, YOU, KI, IKI, GYU});
+}
+
 // ===== 五行ユーティリティ（相生・相剋：内部専用） =====
 const JP2EN = { '木':'WOOD','火':'FIRE','土':'EARTH','金':'METAL','水':'WATER' };
 const EN2JP = { WOOD:'木', FIRE:'火', EARTH:'土', METAL:'金', WATER:'水' };
@@ -299,7 +424,7 @@ function drawKyuseiByYear(birthYear) {
     console.error('[BOOT] 命式テーブル描画でエラー', e);
   }
 
-   // 9) 五行・陰陽
+  // 9) 五行・陰陽
   let fiveCounts = { 木:0, 火:0, 土:0, 金:0, 水:0 };
   let yyCounts   = { 陽:0, 陰:0 };
   try {
@@ -307,18 +432,67 @@ function drawKyuseiByYear(birthYear) {
     yyCounts   = buildYinYangCounts(stems, branches);
     renderFiveBalanceSection(fiveCounts, yyCounts);
 console.log('[BOOT] 五行・陰陽OK (2)', fiveCounts, yyCounts);
-
-// ▼ここから追記：Neutralを埋める描画呼び出し
-drawStrengthKakkyokuYojin(stems, branches, fiveCounts); // 身強弱・格局（既存）
-drawZangRepresentative(stems, branches);                 // 蔵干通変星（既存OK）
-drawStage12(stems.dG, branches);                         // 十二運星・十二運数（既存OK）
-drawYojinSet(stems, fiveCounts);                         // ★新規：用神・喜神・忌神・仇神
-drawGuardianByChoko(branches, fiveCounts);               // ★新規：守護神（調候優先）
-drawLogicBlocks(pillars, stems, branches, fiveCounts);   // 成敗ロジック（既存・空欄時は "-"})
-
   } catch (e) {
-    console.warn('[BOOT] 五行/陰陽でエラー（続行します）', e);
+    console.warn('[BOOT] 五行・陰陽でエラー', e);
   }
+
+/// ▼出力一式
+drawStrengthKakkyokuYojin(stems, branches, fiveCounts);   // 身強弱・格局（既存OK）
+drawZangRepresentative(stems, branches);                   // 蔵干通変星（OK）
+drawStage12(stems.dG, branches);                           // 十二運星・十二運（数）（OK）
+drawYojinSetAsTenGods(stems, fiveCounts);                  // ★新：十神ペアで出力
+drawGuardianByChoko(branches, fiveCounts);                 // ★新：調候の書式
+drawLogicBlocks(pillars, stems, branches, fiveCounts);     // 成敗ロジック（tkdc 表示含む）
+// ===== 守護神（調候優先）：季節・推奨・不足を明示 =====
+function drawGuardianByChoko(branches, fiveCounts) {
+  const el = document.getElementById('guardian');
+  if (!el) return;
+
+  // 季節判定（簡易）
+  const seasonMap = {
+    '寅':'春','卯':'春','辰':'春',
+    '巳':'夏','午':'夏','未':'夏',
+    '申':'秋','酉':'秋','戌':'秋',
+    '亥':'冬','子':'冬','丑':'冬'
+  };
+  const monthB = branches.mB;
+  const season = seasonMap[monthB] || '—';
+
+  // 調候ロジック
+  let needs = [], basis = '';
+  try {
+    const choko = judgeChoko(branches.mB, fiveCounts);
+    if (choko) {
+      if (Array.isArray(choko.need)) needs = choko.need;
+      if (choko.basis) basis = choko.basis;
+    }
+  } catch (e) {
+    console.warn('[GUARDIAN] judgeChoko error', e);
+  }
+
+  if (!needs || needs.length === 0) {
+    el.textContent = '-';
+    return;
+  }
+
+  // 不足：needs の中で fiveCounts が最小の要素（複数同率なら複数）
+  let min = Infinity;
+  needs.forEach(g => { const v = fiveCounts[g]||0; if (v < min) min = v; });
+  const lackList = needs.filter(g => (fiveCounts[g]||0) === min);
+
+  const recommended = needs.join('・');
+  const lackText   = lackList.join('・') || '-';
+
+  // 出力：「季節=夏（月支：巳） 推奨=水・金 → 不足：金」
+  const parts = [
+    `季節=${season}（月支：${monthB}）`,
+    `推奨=${recommended}`,
+    `→ 不足：${lackText}`
+  ];
+  el.textContent = parts.join('　');
+  console.log('[GUARDIAN]', {season, monthB, recommended, lackList, basis});
+}
+
 
   // ★ここから追加：計算済みの値で描画する
   drawStrengthKakkyokuYojin(stems, branches, fiveCounts);
@@ -568,11 +742,17 @@ console.log('[LOGIC RAW]', pillars, stems, branches, fiveCounts);
   } catch (e) {
     console.warn('[DRAW] judgeChoko でエラー', e);
   }
-   // 天剋地冲はまだロジックがないので空欄だけ埋める（エラーにならないように）
-  const tkdcEl = document.getElementById('tkdc');
-  if (tkdcEl && !tkdcEl.innerHTML) {
-    tkdcEl.textContent = '—';
-  }
+   // 天剋地冲（detectTkdc があれば優先。なければローカル簡易判定）
+try {
+  const list = (typeof detectTkdc === 'function') ? detectTkdc(pillars) : detectTkdcLocal(pillars);
+  const el = document.getElementById('tkdc');
+  if (el) el.textContent = (Array.isArray(list) && list.length) ? list.join(' / ') : '—';
+} catch (e) {
+  console.warn('[DRAW] tkdc error', e);
+  const el = document.getElementById('tkdc');
+  if (el) el.textContent = '—';
+}
+
 
   // 守護神（調候優先）はここで将来足す
   const guardianEl = document.getElementById('guardian');
