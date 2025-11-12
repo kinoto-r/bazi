@@ -13,12 +13,64 @@
  * @param {string} stemYinYang "陽" | "陰"
  * @returns {number|null} 起運までの月数（たとえば 9歳8カ月なら 116）or null
  */
+/**
+ * 起運までの月数を求める器
+ * - ここでは「おおまかな優先順」だけ決めておく
+ * - 本物の節気計算は getNextSolarTerm() を実装したときに有効にする
+ *
+ * @param {string|null} birthStr "1979-05-08" など。nullならフォールバック。
+ * @param {string} gender        "male" or "female"
+ * @param {string} stemYinYang   "陽" or "陰" … 年干の陰陽
+ * @returns {number|null}        起運までの月数、わからなければ null
+ */
 function calcQiYunMonths(birthStr, gender, stemYinYang) {
-  // ★ここに本物のロジックを後で書く
-  // いまは「未実装」として null を返す
-  console.log('[QIYUN] 未実装: birth=%s gender=%s stemYinYang=%s', birthStr, gender, stemYinYang);
-  return null;
+  // 入力がなければ何もできないので null → 呼び出し側が116でフォールバックする
+  if (!birthStr) {
+    console.log('[QIYUN] birth が無いのでフォールバックします');
+    return null;
+  }
+
+  // 1. 生年月日を分解
+  // "YYYY-MM-DD" or "YYYY/M/D" 程度は受ける
+  const normalized = birthStr.replace(/\//g, '-');
+  const parts = normalized.split('-');
+  if (parts.length < 3) {
+    console.log('[QIYUN] birth の形式が想定外です:', birthStr);
+    return null;
+  }
+  const by = parseInt(parts[0], 10);
+  const bm = parseInt(parts[1], 10);
+  const bd = parseInt(parts[2], 10);
+
+  if (!by || !bm || !bd) {
+    console.log('[QIYUN] birth の数値変換に失敗しました:', birthStr);
+    return null;
+  }
+
+  // 2. ここで本当は「節入りの日時」を求める。
+  //    → まだ無いので、月だけでざっくり分類しておく。
+  //
+  // 中国式でよくあるのは
+  //   ・順行のとき：出生後の節気までの日数 ÷ 3 日 = 起運年齢(年)
+  //   ・逆行のとき：出生前の節気までの日数 ÷ 3 日 = 起運年齢(年)
+  // なので、その“日数を出す”ところだけ後で埋められるようにする。
+  //
+  // 今は「とりあえず性別×年干陰陽だけで 9年 or 10年 にする」簡易ロジックにしておく。
+
+  const isForward = (gender === 'male' && stemYinYang === '陽') ||
+                    (gender === 'female' && stemYinYang === '陰');
+
+  // 簡易：順行なら 9年8カ月(116)、逆行なら 10年0カ月(120) にしておく
+  // ここはあとで「節気日数÷3」を入れたら消す前提
+  if (isForward) {
+    console.log('[QIYUN] 簡易順行 → 9y8m に設定');
+    return 116; // 9年8カ月
+  } else {
+    console.log('[QIYUN] 簡易逆行 → 10y0m に設定');
+    return 120; // 10年
+  }
 }
+
 
 /* ===================== 大運表 ===================== */
 /**

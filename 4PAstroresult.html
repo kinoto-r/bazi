@@ -297,19 +297,19 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
 
 <tr>
   <th>用神</th>
-  <td id="yojin_yong" colspan="4"></td>
+  <td id="yojin_you" colspan="4"></td>
 </tr>
 <tr>
   <th>喜神</th>
-  <td id="yojin_xi" colspan="4"></td>
+  <td id="yojin_ki" colspan="4"></td>
 </tr>
 <tr>
   <th>忌神</th>
-  <td id="yojin_ji" colspan="4"></td>
+  <td id="yojin_iki" colspan="4"></td>
 </tr>
 <tr>
   <th>仇神</th>
-  <td id="yojin_chou" colspan="4"></td>
+  <td id="yojin_gyu" colspan="4"></td>
 </tr>
 
       </tbody>
@@ -358,15 +358,15 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
 <!-- 読み込み順。全部deferなので上から順に定義が揃う -->
 <script defer src="bazi-constants.js?v=6" charset="utf-8"></script>
 <script defer src="bazi-logic.js?v=5" charset="utf-8"></script>
-<script defer src="bazi-utils.js?v=4" charset="utf-8"></script>
-<script defer src="bazi-render.js?v=4" charset="utf-8"></script>
-<script defer src="bazi-luck.js?v=4" charset="utf-8"></script>
+<script defer src="bazi-utils.js?v=5" charset="utf-8"></script>
+<script defer src="bazi-render.js?v=5" charset="utf-8"></script>
+<script defer src="bazi-luck.js?v=5" charset="utf-8"></script>
 
-<!-- app本体 -->
-<script defer src="app.js?v=10" charset="utf-8"></script>
+<!-- index.global.js（干支計算ロジックを先に定義） -->
+<script defer src="./index.global.js?v=4" charset="utf-8"></script>
 
-<!-- 落ちてもいいやつは最後 -->
-<script defer src="./index.global.js?v=3" charset="utf-8"></script>
+<!-- app本体（ここで命式を組み立てる） -->
+<script defer src="app.js?v=20" charset="utf-8"></script>
 
 <!-- 大運・年運のセクション（CSSもここでOK） -->
 <style>
