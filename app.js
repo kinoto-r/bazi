@@ -443,6 +443,34 @@ drawStage12(stems.dG, branches);                           // 十二運星・十
 drawYojinSetAsTenGods(stems, fiveCounts);                  // ★新：十神ペアで出力
 drawGuardianByChoko(branches, fiveCounts);                 // ★新：調候の書式
 drawLogicBlocks(pillars, stems, branches, fiveCounts);     // 成敗ロジック（tkdc 表示含む）
+
+// === 十二運・蔵干代表・用神/喜神など、pillarsが確定した“後”に実行する ===
+try {
+  const dayStem = pillars.day?.chinese?.[0];
+  const branches = {
+    yB: pillars.year?.chinese?.[1],
+    mB: pillars.month?.chinese?.[1],
+    dB: pillars.day?.chinese?.[1],
+    hB: pillars.time?.chinese?.[1],
+  };
+
+  // すでに同等の呼び出しがある場合は重複しないよう統一してください
+  if (typeof drawStage12 === 'function') {
+    drawStage12(dayStem, branches);
+  }
+  if (typeof drawZangRepresentative === 'function') {
+    drawZangRepresentative(dayStem, branches);
+  }
+  if (typeof drawStrengthKakkyokuYojin === 'function') {
+    drawStrengthKakkyokuYojin(pillars);
+  }
+  if (typeof drawLogicBlocks === 'function') {
+    drawLogicBlocks(pillars);
+  }
+} catch (e) {
+  console.warn('[BOOT] 後段描画でエラー（続行します）', e);
+}
+
 // ===== 守護神（調候優先）：季節・推奨・不足を明示 =====
 function drawGuardianByChoko(branches, fiveCounts) {
   const el = document.getElementById('guardian');
@@ -501,18 +529,43 @@ function drawGuardianByChoko(branches, fiveCounts) {
   drawLogicBlocks(pillars, stems, branches, fiveCounts);
 
   
-  // 14) 大運・年運（性別とbirthYearを渡す）
-  try {
-    renderDaiunTable(pillars, gender, birthYear, { birth: params.birth });
-    renderLiunianTable(pillars, gender, birthYear, {
-      startYear: new Date().getFullYear(),
-      years: 10
-    });
-  } catch (e) {
-    console.warn('[BOOT] 大運/年運でエラー（続行します）', e);
-  }
+  // 14) 大運・年運（性別と「誕生日ISO」を渡す：立運で使用）
+try {
+  // URLから birth を最優先。なければ誕生日/年から暫定日付を生成
+  const birthISO =
+    (params.birth && /^\d{4}-\d{2}-\d{2}/.test(params.birth)) ? params.birth :
+    (params.birthday && /^\d{4}-\d{2}-\d{2}/.test(params.birthday)) ? params.birthday :
+    (birthYear ? `${birthYear}-06-15` : null);
 
-  showDiag('表示完了');
+  // 大運：月柱起点・行運（順/逆）・立運（年/月）・通変星/十二運を月柱参照で算出
+  renderDaiunTable(pillars, gender, birthISO, { count: 11 });
+// 年運：0歳（出生年）からスタート
+try {
+  const birthY = (birthISO && /^\d{4}/.test(birthISO)) ? parseInt(birthISO.slice(0, 4), 10) : null;
+  // 安全策：birthISOが無い/壊れている場合は従来表示にフォールバック
+  if (birthY == null || isNaN(birthY)) {
+    const thisYear = new Date().getFullYear();
+    renderLiunianTable(pillars, gender, birthISO, {
+      startYear: thisYear,
+      years: 10,
+      baseAge: null
+    });
+  } else {
+    // ★ここが「0歳から」の指定
+    renderLiunianTable(pillars, gender, birthISO, {
+      startYear: birthY,  // 出生年から
+      years: 100,         // 表示年数（例：100年分）
+      baseAge: 0          // 年齢列は 0,1,2,... と表示
+    });
+  }
+  
+} catch (e) {
+  console.warn('[BOOT] 大運/年運でエラー（続行します）', e);
+}
+} catch (e) {
+  console.warn('[BOOT] 大運/年運（全体）でエラー（続行します）', e);
+}
+
 
   // ========= ヘルパー =========
   function showDiag(msg) {
@@ -549,7 +602,7 @@ function drawGuardianByChoko(branches, fiveCounts) {
   }
 
 })();
-// 10) 身強弱・格局・用神（4行版）
+ // 10) 身強弱・格局・用神（4行版）
   function drawStrengthKakkyokuYojin(stems, branches, fiveCounts) {
   // 五行カウントを judgeStrength の想定形に整える
   const fiveForJudge = {
@@ -637,8 +690,6 @@ function drawZangRepresentative(stems, branches) {
   });
 }
 
-// 日干
-const dayStem = stems.dG;
 // 透干チェックに使う天干セット
 const stemsByPos = {
   year:  stems.yG,
