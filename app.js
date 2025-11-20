@@ -444,32 +444,6 @@ drawYojinSetAsTenGods(stems, fiveCounts);                  // ★新：十神ペ
 drawGuardianByChoko(branches, fiveCounts);                 // ★新：調候の書式
 drawLogicBlocks(pillars, stems, branches, fiveCounts);     // 成敗ロジック（tkdc 表示含む）
 
-// === 十二運・蔵干代表・用神/喜神など、pillarsが確定した“後”に実行する ===
-try {
-  const dayStem = pillars.day?.chinese?.[0];
-  const branches = {
-    yB: pillars.year?.chinese?.[1],
-    mB: pillars.month?.chinese?.[1],
-    dB: pillars.day?.chinese?.[1],
-    hB: pillars.time?.chinese?.[1],
-  };
-
-  // すでに同等の呼び出しがある場合は重複しないよう統一してください
-  if (typeof drawStage12 === 'function') {
-    drawStage12(dayStem, branches);
-  }
-  if (typeof drawZangRepresentative === 'function') {
-    drawZangRepresentative(dayStem, branches);
-  }
-  if (typeof drawStrengthKakkyokuYojin === 'function') {
-    drawStrengthKakkyokuYojin(pillars);
-  }
-  if (typeof drawLogicBlocks === 'function') {
-    drawLogicBlocks(pillars);
-  }
-} catch (e) {
-  console.warn('[BOOT] 後段描画でエラー（続行します）', e);
-}
 
 // ===== 守護神（調候優先）：季節・推奨・不足を明示 =====
 function drawGuardianByChoko(branches, fiveCounts) {
@@ -690,32 +664,6 @@ function drawZangRepresentative(stems, branches) {
   });
 }
 
-// 透干チェックに使う天干セット
-const stemsByPos = {
-  year:  stems.yG,
-  month: stems.mG,
-  day:   stems.dG,
-  time:  stems.hG,
-};
-
-const pairs = [
-  { id: 'c_time_zang_tg_main', branch: branches.hB },
-  { id: 'c_day_zang_tg_main',  branch: branches.dB },
-  { id: 'c_month_zang_tg_main',branch: branches.mB },
-  { id: 'c_year_zang_tg_main', branch: branches.yB },
-];
-
-pairs.forEach(p => {
-  const el = document.getElementById(p.id);
-  if (!el) return;
-  try {
-    const sel = selectZangTenGod(dayStem, p.branch, stemsByPos);
-    el.textContent = sel && sel.tg ? sel.tg : '—';
-  } catch (e) {
-    console.warn('[DRAW] selectZangTenGod でエラー', e);
-    el.textContent = '—';
-  }
-});
 
 // 12) 十二運
   // 十二運星と値を4本ぶん表示
@@ -747,8 +695,6 @@ function drawStage12(dayStem, branches) {
     }
   });
 }
-
-console.log('[LOGIC RAW]', pillars, stems, branches, fiveCounts);
 
   // 13) 成敗ロジック
   function drawLogicBlocks(pillars, stems, branches, fiveCounts) {
