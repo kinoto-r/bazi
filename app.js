@@ -314,11 +314,11 @@ drawKyuseiByYear(by);
   // ▼ date_mapping.json をいくつかの候補パスで探す
 const mappingPaths = [
   // 実際に存在するパス（あなたの環境）
-  'https://kinoto-research.jp/wp-i/tools/bazi/src/dates_mapping.json',
+  './src/dates_mapping.json',
 
   // 予備（同じドメイン相対で動かしたいとき用）
-  '/wp-i/tools/bazi/src/dates_mapping.json',
-  './wp-i/tools/bazi/src/dates_mapping.json',
+  './src/dates_mapping.json',
+  './src/dates_mapping.json',
 
   // 万一ローカルで見るときの予備
   './dates_mapping.json'
