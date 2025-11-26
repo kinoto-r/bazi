@@ -417,6 +417,23 @@ function renderLiunianTable(pillars, gender, birthISOorYear, opts = {}) {
       const tgStem    = (typeof tenGodExact === 'function') ? (tenGodExact(dayG, stem) || '—') : '—';
       const stageName = (typeof stage12Of   === 'function') ? (stage12Of(dayG, branch) || '—')   : '—';
 
+       // 関係（天中殺・月支との地支関係）
+      const relations = [];
+      try {
+        const yearKW = (typeof kongwangPairByGanzhi === 'function') ? kongwangPairByGanzhi(pillars.year?.chinese) : null;
+        const dayKW  = (typeof kongwangPairByGanzhi === 'function') ? kongwangPairByGanzhi(pillars.day?.chinese)  : null;
+        if (yearKW && Array.isArray(yearKW) && yearKW.includes(branch)) relations.push('年運天中殺(年)');
+        if (dayKW  && Array.isArray(dayKW)  && dayKW.includes(branch))  relations.push('年運天中殺(日)');
+      } catch (e) { console.warn('[年運] kongwang 判定でエラー', e); }
+
+      try {
+        const monthBranch = pillars?.month?.chinese ? pillars.month.chinese[1] : null;
+        const rel = monthBranch ? branchRelation(monthBranch, branch) : [];
+        if (rel && rel.length) relations.push(`月支:${rel.join('・')}`);
+      } catch (e) { console.warn('[年運] branchRelation error', e); }
+
+      const relationText = relations.length ? relations.join(' / ') : '';
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="border:1px solid #999;padding:8px 10px;text-align:left">${y}</td>
@@ -424,7 +441,7 @@ function renderLiunianTable(pillars, gender, birthISOorYear, opts = {}) {
         <td style="border:1px solid #999;padding:8px 10px;text-align:left">${gz}</td>
         <td style="border:1px solid #999;padding:8px 10px;text-align:left">${tgStem}</td>
         <td style="border:1px solid #999;padding:8px 10px;text-align:left">${stageName}</td>
-        <td style="border:1px solid #999;padding:8px 10px;text-align:left"></td>`;
+        <td style="border:1px solid #999;padding:8px 10px;text-align:left">${relationText}</td>`;
       tbody.appendChild(tr);
     }
 
