@@ -73,11 +73,11 @@ function calcDaysFromJieqiStart(year, month, day, loader) {
   return diffDays >= 0 ? diffDays : null;
 }
 
-// ===== 用神セット（十神ペアで固定表示：身強/身弱ベース）=====
+// ===== 用神セット（四神：五行で表示。身強/身弱ベース）=====
 // 仕様：
-//  身強 → 用神: 食神/傷官, 喜神: 正財/偏財, 忌神: 正官/偏官, 仇神: 印綬/偏印
-//  身弱 → 用神: 印綬/偏印, 喜神: 比肩/劫財, 忌神: 正財/偏財, 仇神: 正官/偏官
-//  ※ 「どちらを先に出すか」の順番のみ、fiveCountsの不足側を先に表示します（見た目最適化）。
+//  身強 → 用神: 食神/傷官（洩気 = 生じる側）、喜神: 正財/偏財（我剋）、忌神: 正官/偏官（剋我）、仇神: 印綬/偏印（生我）
+//  身弱 → 用神: 印綬/偏印（生我）、喜神: 比肩/劫財（比劫）、忌神: 正財/偏財（我剋）、仇神: 正官/偏官（剋我）
+//  表示は各十神ペアに対応する五行（日干基準）。不足側の順序調整は行わず、五行を固定で示す。
 function drawYojinSetAsTenGods(stems, fiveCounts) {
   const elYou = document.getElementById('yojin_you') || null;
   const elKi  = document.getElementById('yojin_ki')  || null;
@@ -100,50 +100,46 @@ function drawYojinSetAsTenGods(stems, fiveCounts) {
   const isStrong = /身強/.test(strengthLabel);
   const isWeak   = /身弱/.test(strengthLabel);
 
-  // ペア（固定文言）
-  const P = {
-    shokusho: '食神/傷官',
-    zai:      '正財/偏財',
-    kan:      '正官/偏官',
-    in:       '印綬/偏印',
-    hiki:     '比肩/劫財',
-  };
+  // 日干の五行
+  const dayElJP = stemEl(stems.dG);
+  const day = dayElJP ? JP2EN[dayElJP] : null;
 
-  // 順序の微最適化：不足側を前に
-  const preferOrder = (pairText) => {
-    // 代表五行のヒント（完全厳密でなく可。表示順の最適化のみ）
-    const hint = {
-      '食神/傷官': ['木','火'],   // 日主が漏らす側（例：日主木なら火）
-      '正財/偏財': ['土','金'],   // 我剋（財）に寄る傾向の表示順ヒント
-      '正官/偏官': ['水','木'],   // 剋我（官）に寄る傾向の表示順ヒント
-      '印綬/偏印': ['水','木'],   // 生我（印）
-      '比肩/劫財': []             // 同五行は判断不要
-    };
-    const [a, b] = pairText.split('/');
-    const h = hint[pairText] || [];
-    if (!h.length) return pairText;
-    const aCnt = (fiveCounts[h[0]]||999) + (fiveCounts[h[1]]||999);
-    const bCnt = aCnt; // 今回は文言固定のため入替なし（ロジック簡素化）
-    return `${a}/${b}`;
-  };
+  if (!day) {
+    const fallback = '-';
+    if (elYou) elYou.textContent = fallback;
+    if (elKi)  elKi.textContent  = fallback;
+    if (elIki) elIki.textContent = fallback;
+    if (elGyu) elGyu.textContent = fallback;
+    if (elOne) elOne.textContent = '—';
+    console.warn('[YOJIN-TG] 日干の五行が取得できません');
+    return;
+  }
+
+  // 十神ペア → 五行（日干基準）のマッピング
+  const pairElement = {
+    shokusho: EN2JP[SHENG_NEXT[day]], // 洩気（食傷）
+    zai:      EN2JP[KE_TARGET[day]],  // 我剋（財）
+    kan:      EN2JP[KE_BY[day]],      // 剋我（官殺）
+    in:       EN2JP[SHENG_PREV[day]], // 生我（印）
+    hiki:     EN2JP[day],             // 比劫
 
   let YOU='', KI='', IKI='', GYU='';
   if (isStrong) {
-    YOU = preferOrder(P.shokusho);
-    KI  = preferOrder(P.zai);
-    IKI = preferOrder(P.kan);
-    GYU = preferOrder(P.in);
+    YOU = pairElement.shokusho;
+    KI  = pairElement.zai;
+    IKI = pairElement.kan;
+    GYU = pairElement.in;
   } else if (isWeak) {
-    YOU = preferOrder(P.in);
-    KI  = preferOrder(P.hiki);
-    IKI = preferOrder(P.zai);
-    GYU = preferOrder(P.kan);
+    YOU = pairElement.in;
+    KI  = pairElement.hiki;
+    IKI = pairElement.zai;
+    GYU = pairElement.kan;
   } else {
     // 中庸：最小限のルール（財・官を抑え、印・比で補う）
-    YOU = preferOrder(P.in);
-    KI  = preferOrder(P.hiki);
-    IKI = preferOrder(P.zai);
-    GYU = preferOrder(P.kan);
+    YOU = pairElement.in;
+    KI  = pairElement.hiki;
+    IKI = pairElement.zai;
+    GYU = pairElement.kan;
   }
 
   if (elYou && elKi && elIki && elGyu) {
