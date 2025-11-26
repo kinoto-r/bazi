@@ -319,11 +319,11 @@ function renderTenGodBars(dayStem, stems, branches) {
     intelligence: '知性の星（印綬・偏印）'
   };
   const catColor = {
-    independence: '#f97316',
-    network: '#0ea5e9',
-    expression: '#22c55e',
-    execution: '#a855f7',
-    intelligence: '#e11d48'
+    independence: '#f6c8d9',
+    network: '#d1e7ff',
+    expression: '#d6f3e1',
+    execution: '#e6dcff',
+    intelligence: '#ffe6cc'
   };
 
   const tgToCategory = {
