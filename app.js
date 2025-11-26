@@ -40,6 +40,38 @@ function detectTkdcLocal(pillars) {
   }
   return out;
 }
+// 節入日からの経過日数（0日目=節入当日）を date_mapping から算出
+function calcDaysFromJieqiStart(year, month, day, loader) {
+  if (!loader || typeof loader.getDateMappingData !== 'function') return null;
+
+  const data = loader.getDateMappingData().mappings || {};
+  const yStr = String(year);
+  const mStr = String(month);
+  const dStr = String(day);
+  const todayInfo = (data[yStr] && data[yStr][mStr]) ? data[yStr][mStr][dStr] : null;
+  if (!todayInfo || todayInfo.season == null) return null;
+
+  const targetSeason = todayInfo.season;
+  const birthDate = new Date(year, month - 1, day);
+  let startDate = new Date(birthDate);
+
+  // 前日に同じ season が続く限りさかのぼる（最大 60 日の安全弁）
+  for (let i = 0; i < 60; i += 1) {
+    const prev = new Date(startDate);
+    prev.setDate(prev.getDate() - 1);
+    const py = String(prev.getFullYear());
+    const pm = String(prev.getMonth() + 1);
+    const pd = String(prev.getDate());
+    const prevInfo = (data[py] && data[py][pm]) ? data[py][pm][pd] : null;
+    if (!prevInfo || prevInfo.season !== targetSeason) {
+      break;
+    }
+    startDate = prev;
+  }
+
+  const diffDays = Math.round((birthDate - startDate) / (24 * 60 * 60 * 1000));
+  return diffDays >= 0 ? diffDays : null;
+}
 
 // ===== 用神セット（十神ペアで固定表示：身強/身弱ベース）=====
 // 仕様：

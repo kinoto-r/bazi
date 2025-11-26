@@ -38,6 +38,25 @@ const ZANG = {
   "亥":{"hon":"壬","mid":null,"rem":"甲"}
 };
 
+// 蔵干深浅（節入からの日数で代表干を選ぶときに使用）
+// 0日目を節入当日として、日数に応じて 6 区分に丸めて採用する。
+// （表はユーザー提供の蔵干深浅表に基づく）
+const ZANG_DEPTH_SEGMENTS = [6, 12, 18, 24, 30, 999];
+const ZANG_DEPTH_TABLE = {
+  '寅': ['甲','甲','丙','丙','甲','戊'],
+  '卯': ['乙','乙','乙','乙','乙','乙'],
+  '辰': ['戊','戊','乙','乙','乙','癸'],
+  '巳': ['丙','丙','庚','庚','戊','丙'],
+  '午': ['丁','丁','丁','丁','丁','丁'],
+  '未': ['己','己','乙','乙','丁','丁'],
+  '申': ['庚','庚','壬','壬','戊','庚'],
+  '酉': ['辛','辛','辛','辛','辛','辛'],
+  '戌': ['戊','戊','丁','丁','丁','辛'],
+  '亥': ['壬','壬','壬','壬','壬','甲'],
+  '子': ['癸','癸','癸','癸','癸','壬'],
+  '丑': ['己','己','辛','辛','癸','癸'],
+};
+
 const BRANCH12 = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
 
 function normalizeBranch(b) {
@@ -305,7 +324,18 @@ function stage12Value(stageName) { return STAGE12_VALUES[stageName] || 0; }
 
 const isCounterPair = (a, b) => COUNTER[stemEl(a)] === stemEl(b) || COUNTER[stemEl(b)] === stemEl(a);
 
-function selectZangTenGod(dayStem, monthBranch, stemsByPos) {
+function selectZangByDepth(branch, daysFromJieqiStart) {
+  const b = normalizeBranch(branch);
+  if (daysFromJieqiStart == null || daysFromJieqiStart < 0) return null;
+  const table = ZANG_DEPTH_TABLE[b];
+  if (!table) return null;
+
+  const idx = ZANG_DEPTH_SEGMENTS.findIndex(limit => daysFromJieqiStart <= limit);
+  const safeIdx = idx === -1 ? table.length - 1 : Math.min(idx, table.length - 1);
+  return table[safeIdx] || null;
+}
+
+function selectZangTenGod(dayStem, monthBranch, stemsByPos, options = {}) {
   const b = normalizeBranch(monthBranch);
   const zang = ZANG[b];
   if (!zang) return {tg:'－',basis:'蔵干なし',zangKey:null};
@@ -316,6 +346,19 @@ function selectZangTenGod(dayStem, monthBranch, stemsByPos) {
   ].filter(z => z.stem);
   const visible = zangLayers.find(layer => Object.values(stemsByPos).includes(layer.stem));
   if (visible) return {tg:tenGodExact(dayStem, visible.stem)||'－',basis:`${visible.label}「${visible.stem}」が天干に透出`,zangKey:visible.key,stem:visible.stem};
+
+  const shouldUseDepth = (
+    options && options.preferDepthForMonth &&
+    options.monthBranch && normalizeBranch(options.monthBranch) === b &&
+    options.daysFromJieqiStart != null
+  );
+  if (shouldUseDepth) {
+    const depthStem = selectZangByDepth(b, options.daysFromJieqiStart);
+    if (depthStem) {
+      return {tg:tenGodExact(dayStem, depthStem)||'－',basis:`蔵干深浅（節入から${options.daysFromJieqiStart}日）`,zangKey:null,stem:depthStem};
+    }
+  }
+
   for (const layer of zangLayers) {
     const tg = tenGodExact(dayStem, layer.stem);
     if (tg && tg !== '－') return {tg,basis:`${layer.label}「${layer.stem}」を採用（透干なし）`,zangKey:layer.key,stem:layer.stem};

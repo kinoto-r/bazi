@@ -328,8 +328,19 @@ function stage12Value(stageName) {
 const isCounterPair = (a, b) =>
   COUNTER[stemEl(a)] === stemEl(b) || COUNTER[stemEl(b)] === stemEl(a);
 
+/* ===================== 蔵干深浅の代表干 ===================== */
+function selectZangByDepth(branch, daysFromJieqiStart) {
+  const b = normalizeBranch(branch);
+  if (daysFromJieqiStart == null || daysFromJieqiStart < 0) return null;
+  const table = ZANG_DEPTH_TABLE[b];
+  if (!table) return null;
+
+  const idx = ZANG_DEPTH_SEGMENTS.findIndex(limit => daysFromJieqiStart <= limit);
+  const safeIdx = idx === -1 ? table.length - 1 : Math.min(idx, table.length - 1);
+  return table[safeIdx] || null;
+}
 /* ===================== 蔵干十神選択 ===================== */
-function selectZangTenGod(dayStem, monthBranch, stemsByPos) {
+function selectZangTenGod(dayStem, monthBranch, stemsByPos, options = {}) {
   const b = normalizeBranch(monthBranch);
   const zang = ZANG[b];
   if (!zang) return { tg: '－', basis: '蔵干なし', zangKey: null };
@@ -341,7 +352,7 @@ function selectZangTenGod(dayStem, monthBranch, stemsByPos) {
   ].filter(z => z.stem);
 
   // 透出している層を優先
-  const visible = zangLayers.find(layer => 
+  const visible = zangLayers.find(layer =>
     Object.values(stemsByPos).includes(layer.stem)
   );
   if (visible) {
@@ -352,7 +363,23 @@ function selectZangTenGod(dayStem, monthBranch, stemsByPos) {
       stem: visible.stem
     };
   }
+const shouldUseDepth = (
+    options && options.preferDepthForMonth &&
+    options.monthBranch && normalizeBranch(options.monthBranch) === b &&
+    options.daysFromJieqiStart != null
+  );
 
+  if (shouldUseDepth) {
+    const depthStem = selectZangByDepth(b, options.daysFromJieqiStart);
+    if (depthStem) {
+      return {
+        tg: tenGodExact(dayStem, depthStem) || '－',
+        basis: `蔵干深浅（節入から${options.daysFromJieqiStart}日）`,
+        zangKey: null,
+        stem: depthStem
+      };
+    }
+  }
   // 透出なしの場合、本気→中気→余気の順
   for (const layer of zangLayers) {
     const tg = tenGodExact(dayStem, layer.stem);
