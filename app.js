@@ -79,11 +79,11 @@ function calcDaysFromJieqiStart(year, month, day, loader) {
 //  身弱 → 用神: 印綬/偏印（生我）、喜神: 比肩/劫財（比劫）、忌神: 正財/偏財（我剋）、仇神: 正官/偏官（剋我）
 //  表示は各十神ペアに対応する五行（日干基準）。不足側の順序調整は行わず、五行を固定で示す。
 function drawYojinSetAsTenGods(stems, fiveCounts) {
-  const elYou = document.getElementById('yojin_you') || null;
-  const elKi  = document.getElementById('yojin_ki')  || null;
-  const elIki = document.getElementById('yojin_iki') || null;
-  const elGyu = document.getElementById('yojin_gyu') || null;
-  const elOne = document.getElementById('yojin')     || null;
+  const elYouTg = document.getElementById('yojin_you') || null;
+  const elKiTg  = document.getElementById('yojin_ki')  || null;
+  const elIkiTg = document.getElementById('yojin_iki') || null;
+  const elGyuTg = document.getElementById('yojin_gyu') || null;
+  const elOneTg = document.getElementById('yojin')     || null;
 
   // 身強弱
   let strengthLabel = '';
@@ -106,11 +106,11 @@ function drawYojinSetAsTenGods(stems, fiveCounts) {
 
   if (!day) {
     const fallback = '-';
-    if (elYou) elYou.textContent = fallback;
-    if (elKi)  elKi.textContent  = fallback;
-    if (elIki) elIki.textContent = fallback;
-    if (elGyu) elGyu.textContent = fallback;
-    if (elOne) elOne.textContent = '—';
+    if (elYouTg) elYouTg.textContent = fallback;
+    if (elKiTg)  elKiTg.textContent  = fallback;
+    if (elIkiTg) elIkiTg.textContent = fallback;
+    if (elGyuTg) elGyuTg.textContent = fallback;
+    if (elOneTg) elOneTg.textContent = '—';
     console.warn('[YOJIN-TG] 日干の五行が取得できません');
     return;
   }
@@ -122,6 +122,7 @@ function drawYojinSetAsTenGods(stems, fiveCounts) {
     kan:      EN2JP[KE_BY[day]],      // 剋我（官殺）
     in:       EN2JP[SHENG_PREV[day]], // 生我（印）
     hiki:     EN2JP[day],             // 比劫
+  };
 
   let YOU='', KI='', IKI='', GYU='';
   if (isStrong) {
@@ -135,6 +136,7 @@ function drawYojinSetAsTenGods(stems, fiveCounts) {
     IKI = pairElement.zai;
     GYU = pairElement.kan;
   } else {
+
     // 中庸：最小限のルール（財・官を抑え、印・比で補う）
     YOU = pairElement.in;
     KI  = pairElement.hiki;
@@ -142,13 +144,13 @@ function drawYojinSetAsTenGods(stems, fiveCounts) {
     GYU = pairElement.kan;
   }
 
-  if (elYou && elKi && elIki && elGyu) {
-    elYou.textContent = YOU;
-    elKi.textContent  = KI;
-    elIki.textContent = IKI;
-    elGyu.textContent = GYU;
-  } else if (elOne) {
-    elOne.innerHTML = `用神：${YOU} ｜ 喜神：${KI} ｜ 忌神：${IKI} ｜ 仇神：${GYU}`;
+  if (elYouTg && elKiTg && elIkiTg && elGyuTg) {
+    elYouTg.textContent = YOU;
+    elKiTg.textContent  = KI;
+    elIkiTg.textContent = IKI;
+    elGyuTg.textContent = GYU;
+  } else if (elOneTg) {
+    elOneTg.innerHTML = `用神：${YOU} ｜ 喜神：${KI} ｜ 忌神：${IKI} ｜ 仇神：${GYU}`;
   }
   console.log('[YOJIN-TG]', {strengthLabel, YOU, KI, IKI, GYU});
 }
