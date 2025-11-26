@@ -306,7 +306,28 @@ const startM = mTotal % 12;
       tr.appendChild(tdStage);
 
       const tdRel = document.createElement('td');
-      tdRel.textContent = '—'; // 関係（将来：月柱/日柱との関係などを出す場合に使用）
+
+      // 関係（大運天中殺／月支との合・冲・刑・害）
+      const relations = [];
+
+      // 大運天中殺（生年/生日の空亡に該当する支）
+      try {
+        const yearKW = (typeof kongwangPairByGanzhi === 'function') ? kongwangPairByGanzhi(pillars.year?.chinese) : null;
+        const dayKW  = (typeof kongwangPairByGanzhi === 'function') ? kongwangPairByGanzhi(pillars.day?.chinese)  : null;
+        if (yearKW && Array.isArray(yearKW) && yearKW.includes(branch)) relations.push('大運天中殺(年)');
+        if (dayKW  && Array.isArray(dayKW)  && dayKW.includes(branch))  relations.push('大運天中殺(日)');
+      } catch (e) { console.warn('[DAIUN] kongwang 判定でエラー', e); }
+
+      // 月支との地支関係（六合/冲/害/刑）
+      try {
+        const monthB = monthGZ ? monthGZ[1] : null;
+        const rel = monthB ? branchRelation(monthB, branch) : [];
+        if (rel && rel.length) relations.push(`月支:${rel.join('・')}`);
+      } catch (e) { console.warn('[DAIUN] branchRelation error', e); }
+
+      // 該当関係がなければセルを空欄にする
+      tdRel.textContent = relations.length ? relations.join(' / ') : '';
+
       tr.appendChild(tdRel);
 
       tbody.appendChild(tr);
