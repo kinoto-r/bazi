@@ -142,11 +142,23 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
 
 #fiveRadar svg, #yyChart svg { max-width:100%; height:auto; }
 
+/* 通変星バーチャート */
+.tg-bars{ margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+.tg-bar{ width:100%; }
+.tg-bar-label{ font-size:.95rem; font-weight:600; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
+.tg-bar-track{ display:flex; width:100%; height:22px; border-radius:999px; overflow:hidden; border:1px solid var(--bd); background:#f9fafb; }
+.tg-bar-track.empty{ align-items:center; justify-content:center; color:var(--muted); font-size:.9rem; }
+.tg-bar-segment{ height:100%; }
+.tg-bar-legend{ display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:6px; font-size:.92rem; color:#333; }
+.tg-bar-legend .legend-item{ display:flex; align-items:center; gap:6px; }
+.tg-bar-legend .legend-swatch{ width:14px; height:14px; border-radius:3px; border:1px solid #d1d5db; }
+.input-echo{ font-size:.95rem; margin-left:.4rem; color:var(--muted); }
+
 </style>
 </head>
 <body>
 <div class="card">
-  <h1>四柱推命：結果</h1>
+  <h1>四柱推命：結果 <span id="inputEcho" class="input-echo"></span></h1>
   <div id="summary" class="muted"></div>
   <div id="diag" class="muted">データ読込中...</div>
 
@@ -320,6 +332,7 @@ table.classic .subtg{ font-size:.95rem; color:#444; }
       <h2>陰陽バランス</h2>
       <div id="yyWrap"></div>
       <div id="yyChart"></div>
+      <div id="tgBarCharts" class="tg-bars"></div>
     </div>
   </div>
 

@@ -306,6 +306,7 @@ function drawGuardianByChoko(branches, fiveCounts) {
   try {
     params = safeParseParams();
     console.log('[BOOT] URL params =', params);
+    showInputEcho(params);
   } catch (e) {
     console.error('[BOOT] URL params が読めません', e);
     showDiag('URLパラメータの読み込みに失敗しました。birth, time, gender を確認してください。');
@@ -461,7 +462,8 @@ function drawKyuseiByYear(birthYear) {
     fiveCounts = buildFiveCounts(stems, branches);
     yyCounts   = buildYinYangCounts(stems, branches);
     renderFiveBalanceSection(fiveCounts, yyCounts);
-console.log('[BOOT] 五行・陰陽OK (2)', fiveCounts, yyCounts);
+renderTenGodBars(stems.dG, stems, branches);
+    console.log('[BOOT] 五行・陰陽OK (2)', fiveCounts, yyCounts);
   } catch (e) {
     console.warn('[BOOT] 五行・陰陽でエラー', e);
   }
@@ -579,6 +581,25 @@ try {
     if (diag) diag.textContent = msg;
   }
 
+  function showInputEcho(params) {
+    const el = document.getElementById('inputEcho');
+    if (!el || !params) return;
+
+    const parts = [];
+    if (params.birth) parts.push(params.birth);
+    if (params.time) parts.push(params.time);
+    if (params.tz) parts.push(params.tz);
+    if (params.gender) {
+      const genderLabel = params.gender === 'male'
+        ? '男性'
+        : params.gender === 'female'
+          ? '女性'
+          : params.gender;
+      parts.push(genderLabel);
+    }
+
+    el.textContent = parts.length ? `（${parts.join(' / ')}）` : '';
+  }
   function buildFiveCounts(stems, branches) {
     const cnt = { '木':0, '火':0, '土':0, '金':0, '水':0 };
     [stems.yG, stems.mG, stems.dG, stems.hG].forEach(g => {

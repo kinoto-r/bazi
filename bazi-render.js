@@ -303,6 +303,138 @@ function renderFiveBalanceSection(cnt, yy) {
   }
 }
 
+/* ===================== 通変星カテゴリバーチャート ===================== */
+function renderTenGodBars(dayStem, stems, branches) {
+  const host = $('tgBarCharts');
+  if (!host || !dayStem) return;
+
+  while (host.firstChild) host.removeChild(host.firstChild);
+
+  const catOrder = ['independence','network','expression','execution','intelligence'];
+  const catName = {
+    independence: '自立の星（比肩・劫財）',
+    network:      '人脈・財の星（正財・偏財）',
+    expression:   '表現の星（食神・傷官）',
+    execution:    '実行力の星（正官・偏官）',
+    intelligence: '知性の星（印綬・偏印）'
+  };
+  const catColor = {
+    independence: '#f97316',
+    network: '#0ea5e9',
+    expression: '#22c55e',
+    execution: '#a855f7',
+    intelligence: '#e11d48'
+  };
+
+  const tgToCategory = {
+    '比肩': 'independence', '劫財': 'independence',
+    '正財': 'network',      '偏財': 'network',
+    '食神': 'expression',   '傷官': 'expression',
+    '正官': 'execution',    '偏官': 'execution',
+    '印綬': 'intelligence', '偏印': 'intelligence'
+  };
+
+  const emptyCounts = () => catOrder.reduce((acc, key) => ({ ...acc, [key]: 0 }), {});
+
+  const addCount = (counts, tg) => {
+    const cat = tgToCategory[tg];
+    if (!cat) return;
+    counts[cat] += 1;
+  };
+
+  const stemCounts = emptyCounts();
+  ['yG','mG','hG'].forEach(pos => {
+    const tg = tenGodExact(dayStem, stems[pos]);
+    addCount(stemCounts, tg);
+  });
+
+  const zangCounts = emptyCounts();
+  const zangTargets = ['yB','mB','dB','hB'];
+  zangTargets.forEach(pos => {
+    const b = normalizeBranch(branches[pos]);
+    const z = b ? ZANG[b] : null;
+    if (!z) return;
+    ['hon','mid','rem'].forEach(layer => {
+      const stem = z[layer];
+      if (!stem) return;
+      const tg = tenGodExact(dayStem, stem);
+      addCount(zangCounts, tg);
+    });
+  });
+
+  const makeBar = (title, counts) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'tg-bar';
+
+    const label = document.createElement('div');
+    label.className = 'tg-bar-label';
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    label.textContent = `${title}（${total}）`;
+    wrap.appendChild(label);
+
+    const track = document.createElement('div');
+    track.className = 'tg-bar-track';
+
+    if (total === 0) {
+      track.classList.add('empty');
+      track.textContent = 'データなし';
+    } else {
+      catOrder.forEach(key => {
+        const val = counts[key];
+        if (!val) return;
+        const seg = document.createElement('div');
+        seg.className = 'tg-bar-segment';
+        seg.style.background = catColor[key] || '#e5e7eb';
+        seg.style.width = `${(val / total) * 100}%`;
+        seg.title = `${catName[key]}：${val}`;
+        seg.textContent = val >= 2 ? String(val) : '';
+        track.appendChild(seg);
+      });
+    }
+
+    wrap.appendChild(track);
+    return wrap;
+  };
+
+  const makeLegend = (countsList) => {
+    const legend = document.createElement('div');
+    legend.className = 'tg-bar-legend';
+    const combined = emptyCounts();
+    countsList.forEach(map => {
+      catOrder.forEach(key => {
+        combined[key] += map[key] || 0;
+      });
+    });
+
+    catOrder.forEach(key => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+
+      const swatch = document.createElement('span');
+      swatch.className = 'legend-swatch';
+      swatch.style.background = catColor[key] || '#e5e7eb';
+
+      const text = document.createElement('span');
+      const countText = combined[key] ? `（${combined[key]}）` : '';
+      text.textContent = `${catName[key]}${countText}`;
+
+      item.appendChild(swatch);
+      item.appendChild(text);
+      legend.appendChild(item);
+    });
+
+    return legend;
+  };
+
+  const bars = [
+    makeBar('通変星（天干）', stemCounts),
+    makeBar('通変星（蔵干）', zangCounts)
+  ];
+
+  bars.forEach(bar => { if (bar) host.appendChild(bar); });
+  host.appendChild(makeLegend([stemCounts, zangCounts]));
+}
+
 /* ===================== 命式表描画 ===================== */
 function renderClassicTable(pillars, dG, stems, branches) {
   const { yG, mG, hG } = stems;
